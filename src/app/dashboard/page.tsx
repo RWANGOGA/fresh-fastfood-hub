@@ -10,7 +10,7 @@ export default function UserDashboard() {
   const { cart, removeFromCart, addToCart, clearCart, totalPrice } = useCartStore();
   const [instructions, setInstructions] = useState("");
 
-  const phoneNumber = "256700000000";
+  const phoneNumber = "256756348528";
 
   const handleWhatsAppOrder = () => {
     if (cart.length === 0) {
