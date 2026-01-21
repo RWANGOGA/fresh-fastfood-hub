@@ -1,16 +1,15 @@
-// next.config.mjs (preferred for ES modules)
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    // This line prevents the "unconfigured qualities" error from your logs
+    qualities: [75, 90], 
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
-        port: '',          // optional, leave empty
-        pathname: '/**',   // allow all paths under this domain
+        port: '', 
+        pathname: '/**', 
       },
-      // Optional: Add more hosts if you use other CDNs later
-      // { protocol: 'https', hostname: 'example.com', pathname: '/**' },
     ],
   },
 };
