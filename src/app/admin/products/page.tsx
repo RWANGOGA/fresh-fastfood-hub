@@ -1,15 +1,15 @@
-// src/app/admin/products/page.tsx
+// src/app/admin/products/page.tsx (or replace the product section in dashboard)
 "use client";
 
 import { useState, useEffect } from "react";
 import Navbar from "@/app/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { db, storage } from "@/lib/firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import toast from "react-hot-toast";
 
-// Same categories as your menu page
+// Categories (same as menu)
 const categories = [
   "All",
   "Local Favorites",
@@ -37,10 +37,12 @@ export default function AdminProducts() {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null); // ← for edit mode
 
-  // Fetch products when admin is confirmed
+  // Fetch products
   useEffect(() => {
     if (role !== "admin") return;
 
@@ -55,7 +57,7 @@ export default function AdminProducts() {
         setProducts(productsList);
       } catch (err: any) {
         console.error("Error fetching products:", err);
-        toast.error("Failed to load products from Firestore");
+        toast.error("Failed to load products");
       } finally {
         setFetchLoading(false);
       }
@@ -64,39 +66,76 @@ export default function AdminProducts() {
     fetchProducts();
   }, [role]);
 
-  // Handle adding a new product + image upload
-  const handleAddProduct = async (e: React.FormEvent) => {
+  // Prepare form for editing
+  const startEdit = (product: Product) => {
+    setEditingId(product.id);
+    setName(product.name);
+    setDescription(product.description || "");
+    setPrice(product.price.toString());
+    setCategory(product.category || "");
+    setImageUrlInput(product.image_url || "");
+    setFile(null); // clear file input when editing
+  };
+
+  // Cancel edit
+  const cancelEdit = () => {
+    setEditingId(null);
+    setName("");
+    setDescription("");
+    setPrice("");
+    setCategory("");
+    setImageUrlInput("");
+    setFile(null);
+  };
+
+  // Add or Update product
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !price || !file) {
-      toast.error("Name, price, and image are required");
+    if (!name || !price || (!file && !imageUrlInput.trim() && !editingId)) {
+      toast.error("Name, price, and image (or URL) are required");
       return;
     }
 
     setUploading(true);
 
     try {
-      // Upload image to Firebase Storage
-      const fileExt = file.name.split(".").pop() || "jpg";
-      const fileName = `${Date.now()}.${fileExt}`;
-      const storageRef = ref(storage, `products/${fileName}`);
+      let image_url = imageUrlInput.trim();
 
-      await uploadBytes(storageRef, file);
-      const image_url = await getDownloadURL(storageRef);
+      // If new file uploaded → upload it
+      if (file) {
+        const fileExt = file.name.split(".").pop() || "jpg";
+        const fileName = `${Date.now()}.${fileExt}`;
+        const storageRef = ref(storage, `products/${fileName}`);
 
-      // Save product to Firestore
-      await addDoc(collection(db, "products"), {
+        await uploadBytes(storageRef, file);
+        image_url = await getDownloadURL(storageRef);
+      }
+
+      const productData = {
         name,
         description,
         price: Number(price),
         category,
         image_url,
-        createdAt: new Date().toISOString(),
-      });
+        updatedAt: new Date().toISOString(),
+      };
 
-      toast.success("Product added successfully!");
+      if (editingId) {
+        // Update existing product
+        const productRef = doc(db, "products", editingId);
+        await updateDoc(productRef, productData);
+        toast.success("Product updated successfully!");
+      } else {
+        // Add new product
+        await addDoc(collection(db, "products"), {
+          ...productData,
+          createdAt: new Date().toISOString(),
+        });
+        toast.success("Product added successfully!");
+      }
 
-      // Refresh product list
+      // Refresh list
       const querySnapshot = await getDocs(collection(db, "products"));
       const updatedProducts = querySnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -105,20 +144,31 @@ export default function AdminProducts() {
       setProducts(updatedProducts);
 
       // Reset form
-      setName("");
-      setDescription("");
-      setPrice("");
-      setCategory("");
-      setFile(null);
+      cancelEdit();
     } catch (err: any) {
-      toast.error("Failed to add product: " + (err.message || "Unknown error"));
+      toast.error("Failed: " + (err.message || "Unknown error"));
       console.error(err);
     } finally {
       setUploading(false);
     }
   };
 
-  // Loading state
+  // Delete product
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+
+    try {
+      await deleteDoc(doc(db, "products", id));
+      toast.success("Product deleted");
+
+      // Refresh list
+      setProducts(products.filter((p) => p.id !== id));
+    } catch (err: any) {
+      toast.error("Delete failed: " + err.message);
+      console.error(err);
+    }
+  };
+
   if (authLoading || fetchLoading) {
     return (
       <>
@@ -146,44 +196,42 @@ export default function AdminProducts() {
             Admin – Manage Products
           </h1>
 
-          {/* Add Product Form */}
+          {/* Form – Add or Edit */}
           <div className="bg-white p-8 rounded-2xl shadow-xl mb-12">
-            <h2 className="text-2xl font-bold mb-6">Add New Product</h2>
-            <form onSubmit={handleAddProduct} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium mb-2">Product Name *</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-red outline-none"
-                  placeholder="e.g. Loaded Rolex Special"
-                />
-              </div>
+            <h2 className="text-2xl font-bold mb-6">
+              {editingId ? "Edit Product" : "Add New Product"}
+            </h2>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full p-4 border rounded-xl h-32 focus:ring-2 focus:ring-brand-red outline-none"
-                  placeholder="Fresh chapati with eggs, avocado, sausage..."
-                />
-              </div>
+            {editingId && (
+              <p className="text-sm text-gray-600 mb-4">
+                Editing product ID: {editingId}
+              </p>
+            )}
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Price (UGX) *</label>
-                <input
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                  min="0"
-                  step="100"
-                  className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-red outline-none"
-                  placeholder="12000"
-                />
+            <form onSubmit={handleSaveProduct} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Product Name *</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-red outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Price (UGX) *</label>
+                  <input
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    required
+                    min="0"
+                    className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-red outline-none"
+                  />
+                </div>
               </div>
 
               <div>
@@ -203,12 +251,36 @@ export default function AdminProducts() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Product Image *</label>
+                <label className="block text-sm font-medium mb-2">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full p-4 border rounded-xl h-32 focus:ring-2 focus:ring-brand-red outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Image URL (optional – or upload file below)
+                </label>
+                <input
+                  type="url"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-red outline-none"
+                  placeholder="https://images.unsplash.com/photo-..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Product Image File {imageUrlInput.trim() ? "(or use URL above)" : "*"}
+                </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  required
+                  required={!imageUrlInput.trim() && !editingId} // required only for new products without URL
                   className="w-full p-4 border rounded-xl"
                 />
                 {file && (
@@ -218,13 +290,25 @@ export default function AdminProducts() {
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={uploading}
-                className="w-full py-4 bg-brand-red text-white font-bold rounded-xl hover:bg-red-700 transition disabled:opacity-50"
-              >
-                {uploading ? "Uploading & Saving..." : "Add Product to Menu"}
-              </button>
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="flex-1 py-4 bg-brand-red text-white font-bold rounded-xl hover:bg-red-700 transition disabled:opacity-50"
+                >
+                  {uploading ? "Saving..." : editingId ? "Update Product" : "Add Product"}
+                </button>
+
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="flex-1 py-4 bg-gray-500 text-white font-bold rounded-xl hover:bg-gray-600 transition"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           </div>
 
@@ -259,9 +343,25 @@ export default function AdminProducts() {
                         {product.description || "No description"}
                       </p>
                       <p className="text-brand-green font-bold mt-2">
-                        UGX {Number(product.price).toLocaleString()}
+                        UGX {Number(product.price || 0).toLocaleString()}
                       </p>
                       <p className="text-sm text-gray-500 mt-1">{product.category}</p>
+
+                      {/* Edit & Delete Buttons */}
+                      <div className="mt-4 flex gap-3">
+                        <button
+                          onClick={() => startEdit(product)}
+                          className="flex-1 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="flex-1 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

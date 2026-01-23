@@ -1,15 +1,16 @@
-// src/app/admin/products/page.tsx
+// src/app/admin/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import Navbar from "@/app/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { db, storage } from "@/lib/firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import toast from "react-hot-toast";
+import Link from "next/link";
 
-// Same categories as your menu page
+// Categories (same as menu page)
 const categories = [
   "All",
   "Local Favorites",
@@ -29,17 +30,20 @@ interface Product {
   image_url: string;
 }
 
-export default function AdminProducts() {
+export default function AdminDashboard() {
   const { user, role, loading: authLoading } = useAuth("admin");
+
+  // Product management states
   const [products, setProducts] = useState<Product[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [imageUrlInput, setImageUrlInput] = useState(""); // ← new field for URL
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Fetch products
   useEffect(() => {
@@ -65,21 +69,43 @@ export default function AdminProducts() {
     fetchProducts();
   }, [role]);
 
-  // Add product (now supports URL or file)
-  const handleAddProduct = async (e: React.FormEvent) => {
+  // Prepare form for editing
+  const startEdit = (product: Product) => {
+    setEditingId(product.id);
+    setName(product.name);
+    setDescription(product.description || "");
+    setPrice(product.price.toString());
+    setCategory(product.category || "");
+    setImageUrlInput(product.image_url || "");
+    setFile(null);
+  };
+
+  // Cancel edit
+  const cancelEdit = () => {
+    setEditingId(null);
+    setName("");
+    setDescription("");
+    setPrice("");
+    setCategory("");
+    setImageUrlInput("");
+    setFile(null);
+  };
+
+  // Add or Update product
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !price || (!file && !imageUrlInput.trim())) {
-      toast.error("Name, price, and either image file or URL are required");
+    if (!name || !price || (!file && !imageUrlInput.trim() && !editingId)) {
+      toast.error("Name, price, and image (or URL) are required");
       return;
     }
 
     setUploading(true);
 
     try {
-      let image_url = "";
+      let image_url = imageUrlInput.trim();
 
-      // Priority: uploaded file > pasted URL
+      // Upload new file if provided
       if (file) {
         const fileExt = file.name.split(".").pop() || "jpg";
         const fileName = `${Date.now()}.${fileExt}`;
@@ -87,25 +113,30 @@ export default function AdminProducts() {
 
         await uploadBytes(storageRef, file);
         image_url = await getDownloadURL(storageRef);
-      } else if (imageUrlInput.trim()) {
-        // Validate URL format roughly
-        if (!imageUrlInput.startsWith("http")) {
-          throw new Error("Image URL must start with http/https");
-        }
-        image_url = imageUrlInput.trim();
       }
 
-      // Save to Firestore
-      await addDoc(collection(db, "products"), {
+      const productData = {
         name,
         description,
         price: Number(price),
         category,
         image_url,
-        createdAt: new Date().toISOString(),
-      });
+        updatedAt: new Date().toISOString(),
+      };
 
-      toast.success("Product added successfully!");
+      if (editingId) {
+        // Update
+        const productRef = doc(db, "products", editingId);
+        await updateDoc(productRef, productData);
+        toast.success("Product updated!");
+      } else {
+        // Add new
+        await addDoc(collection(db, "products"), {
+          ...productData,
+          createdAt: new Date().toISOString(),
+        });
+        toast.success("Product added!");
+      }
 
       // Refresh list
       const querySnapshot = await getDocs(collection(db, "products"));
@@ -115,18 +146,26 @@ export default function AdminProducts() {
       })) as Product[];
       setProducts(updatedProducts);
 
-      // Reset form
-      setName("");
-      setDescription("");
-      setPrice("");
-      setCategory("");
-      setFile(null);
-      setImageUrlInput("");
+      cancelEdit();
     } catch (err: any) {
-      toast.error("Failed to add product: " + (err.message || "Unknown error"));
+      toast.error("Failed: " + (err.message || "Unknown error"));
       console.error(err);
     } finally {
       setUploading(false);
+    }
+  };
+
+  // Delete product
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this product permanently?")) return;
+
+    try {
+      await deleteDoc(doc(db, "products", id));
+      toast.success("Product deleted");
+      setProducts(products.filter((p) => p.id !== id));
+    } catch (err: any) {
+      toast.error("Delete failed: " + err.message);
+      console.error(err);
     }
   };
 
@@ -154,23 +193,38 @@ export default function AdminProducts() {
       <main className="min-h-screen pt-20 bg-gray-50 py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl font-bold text-brand-red mb-8 text-center">
-            Admin – Manage Products
+            Admin Dashboard
           </h1>
 
-          {/* Add Product Form */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-12 text-center">
+            <p className="text-gray-600">
+              Logged in as: <span className="font-semibold">{user.email}</span>  
+              (Role: <span className="font-semibold text-brand-red">{role}</span>)
+            </p>
+          </div>
+
+          {/* Product Management (embedded) */}
           <div className="bg-white p-8 rounded-2xl shadow-xl mb-12">
-            <h2 className="text-2xl font-bold mb-6">Add New Product</h2>
-            <form onSubmit={handleAddProduct} className="space-y-6">
+            <h2 className="text-2xl font-bold mb-6">
+              {editingId ? "Edit Product" : "Add New Product"}
+            </h2>
+
+            {editingId && (
+              <p className="text-sm text-gray-600 mb-4 italic">
+                Editing product ID: {editingId}
+              </p>
+            )}
+
+            <form onSubmit={handleSaveProduct} className="space-y-6 mb-12">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Product Name *</label>
+                  <label className="block text-sm font-medium mb-2">Name *</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                     className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-red outline-none"
-                    placeholder="e.g. Loaded Rolex Special"
                   />
                 </div>
 
@@ -182,9 +236,7 @@ export default function AdminProducts() {
                     onChange={(e) => setPrice(e.target.value)}
                     required
                     min="0"
-                    step="100"
                     className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-red outline-none"
-                    placeholder="12000"
                   />
                 </div>
               </div>
@@ -211,11 +263,9 @@ export default function AdminProducts() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full p-4 border rounded-xl h-32 focus:ring-2 focus:ring-brand-red outline-none"
-                  placeholder="Fresh chapati with eggs, avocado, sausage..."
                 />
               </div>
 
-              {/* New: Image URL field */}
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Image URL (optional – or upload file below)
@@ -229,7 +279,6 @@ export default function AdminProducts() {
                 />
               </div>
 
-              {/* File upload */}
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Product Image File {imageUrlInput.trim() ? "(or use URL above)" : "*"}
@@ -238,7 +287,7 @@ export default function AdminProducts() {
                   type="file"
                   accept="image/*"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  required={!imageUrlInput.trim()} // only required if no URL
+                  required={!imageUrlInput.trim() && !editingId}
                   className="w-full p-4 border rounded-xl"
                 />
                 {file && (
@@ -248,25 +297,32 @@ export default function AdminProducts() {
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={uploading}
-                className="w-full py-4 bg-brand-red text-white font-bold rounded-xl hover:bg-red-700 transition disabled:opacity-50"
-              >
-                {uploading ? "Uploading & Saving..." : "Add Product to Menu"}
-              </button>
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="flex-1 py-4 bg-brand-red text-white font-bold rounded-xl hover:bg-red-700 transition disabled:opacity-50"
+                >
+                  {uploading ? "Saving..." : editingId ? "Update Product" : "Add Product"}
+                </button>
+
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="flex-1 py-4 bg-gray-500 text-white font-bold rounded-xl hover:bg-gray-600 transition"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
             </form>
-          </div>
 
-          {/* Current Products List */}
-          <div className="bg-white p-8 rounded-2xl shadow-xl">
-            <h2 className="text-2xl font-bold mb-6">
-              Current Menu Items ({products.length})
-            </h2>
-
+            {/* Product List */}
+            <h3 className="text-xl font-bold mb-4">Current Menu Items ({products.length})</h3>
             {products.length === 0 ? (
-              <p className="text-gray-600 text-center py-12">
-                No products yet — add your first one above!
+              <p className="text-gray-600 text-center py-8">
+                No products yet — add one above!
               </p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -279,24 +335,79 @@ export default function AdminProducts() {
                       src={product.image_url}
                       alt={product.name}
                       className="w-full h-48 object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = "https://via.placeholder.com/400?text=Image+Error";
-                      }}
+                      onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/400?text=Image+Error")}
                     />
                     <div className="p-4">
-                      <h3 className="font-bold text-lg">{product.name}</h3>
+                      <h4 className="font-bold text-lg">{product.name}</h4>
                       <p className="text-gray-600 text-sm line-clamp-2">
                         {product.description || "No description"}
                       </p>
                       <p className="text-brand-green font-bold mt-2">
-                        UGX {Number(product.price).toLocaleString()}
+                        UGX {Number(product.price || 0).toLocaleString()}
                       </p>
                       <p className="text-sm text-gray-500 mt-1">{product.category}</p>
+
+                      <div className="mt-4 flex gap-3">
+                        <button
+                          onClick={() => startEdit(product)}
+                          className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Other Dashboard Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link href="/menu" className="block group">
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-gray-100">
+                <div className="text-5xl mb-4">🍔</div>
+                <h2 className="text-2xl font-bold mb-3 text-gray-800">Manage Menu</h2>
+                <p className="text-gray-600 mb-6">
+                  Add, edit, or remove menu items
+                </p>
+                <div className="w-full py-3 bg-brand-red text-white font-bold rounded-xl group-hover:bg-red-700 transition text-center">
+                  Go to Menu
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/admin/orders" className="block group">
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-gray-100">
+                <div className="text-5xl mb-4">📦</div>
+                <h2 className="text-2xl font-bold mb-3 text-gray-800">Orders</h2>
+                <p className="text-gray-600 mb-6">
+                  View and manage customer orders
+                </p>
+                <div className="w-full py-3 bg-brand-red text-white font-bold rounded-xl group-hover:bg-red-700 transition text-center">
+                  View Orders
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/admin/users" className="block group">
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer border border-gray-100">
+                <div className="text-5xl mb-4">👥</div>
+                <h2 className="text-2xl font-bold mb-3 text-gray-800">Users</h2>
+                <p className="text-gray-600 mb-6">
+                  Manage user accounts and roles
+                </p>
+                <div className="w-full py-3 bg-brand-red text-white font-bold rounded-xl group-hover:bg-red-700 transition text-center">
+                  Manage Users
+                </div>
+              </div>
+            </Link>
           </div>
         </div>
       </main>
