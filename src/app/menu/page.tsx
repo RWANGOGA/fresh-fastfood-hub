@@ -6,14 +6,17 @@ import Navbar from "@/app/components/Navbar";
 import { useCartStore } from "@/app/store/cartStore";
 import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth"; // assuming you have this hook
+import Link from "next/link";
 
 interface MenuItem {
   id: string;
   name: string;
   description: string;
   price: number;
-  image_url: string;
+  image_url: string;       // main image (for compatibility)
+  image_urls?: string[];   // multiple images (new)
   category: string;
 }
 
@@ -39,11 +42,13 @@ const carouselImages = [
 ];
 
 export default function MenuPage() {
+  const { user } = useAuth(); // get current user
   const [activeCategory, setActiveCategory] = useState("All");
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
 
   const addToCart = useCartStore((state) => state.addToCart);
 
@@ -64,13 +69,13 @@ export default function MenuPage() {
         console.log("Loaded from Firestore:", products.length, "products");
 
         if (products.length === 0) {
-          setErrorMsg("No products found in Firestore – add some in the Firebase console");
+          setErrorMsg("No products found – add some in the admin dashboard");
         } else {
           toast.success(`Loaded ${products.length} menu items`);
         }
       } catch (err: any) {
         console.error("Firestore fetch error:", err);
-        setErrorMsg(`Failed to load menu: ${err.message || "Check Firebase rules or connection"}`);
+        setErrorMsg(`Failed to load menu: ${err.message || "Check connection"}`);
       } finally {
         setLoading(false);
       }
@@ -78,6 +83,57 @@ export default function MenuPage() {
 
     fetchProducts();
   }, []);
+
+  // Load user's liked items
+  useEffect(() => {
+    if (!user) return;
+
+    const loadLikes = async () => {
+      try {
+        const likedSnapshot = await getDocs(collection(db, "users", user.uid, "likedItems"));
+        const likedSet = new Set(likedSnapshot.docs.map((doc) => doc.id));
+        setLikedItems(likedSet);
+      } catch (err) {
+        console.error("Error loading likes:", err);
+      }
+    };
+
+    loadLikes();
+  }, [user]);
+
+  // Toggle like / unlike
+  const toggleLike = async (itemId: string) => {
+    if (!user) {
+      toast.error("Please login to like items");
+      return;
+    }
+
+    const isLiked = likedItems.has(itemId);
+
+    try {
+      if (isLiked) {
+        // Unlike
+        await deleteDoc(doc(db, "users", user.uid, "likedItems", itemId));
+        setLikedItems((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(itemId);
+          return newSet;
+        });
+        toast.success("Removed from liked items");
+      } else {
+        // Like
+        await setDoc(doc(db, "users", user.uid, "likedItems", itemId), {
+          productId: itemId,
+          likedAt: new Date().toISOString(),
+        });
+        setLikedItems((prev) => new Set([...prev, itemId]));
+        toast.success("Added to liked items ❤️");
+      }
+    } catch (err) {
+      console.error("Like error:", err);
+      toast.error("Failed to update like");
+    }
+  };
 
   // Carousel auto-slide
   useEffect(() => {
@@ -97,7 +153,7 @@ export default function MenuPage() {
       <>
         <Navbar />
         <main className="min-h-screen pt-20 flex items-center justify-center">
-          <p className="text-2xl text-gray-600 animate-pulse">Loading menu from Firebase...</p>
+          <p className="text-2xl text-gray-600 animate-pulse">Loading menu...</p>
         </main>
       </>
     );
@@ -109,7 +165,7 @@ export default function MenuPage() {
         <Navbar />
         <main className="min-h-screen pt-20 flex items-center justify-center">
           <p className="text-2xl text-red-600 text-center max-w-xl px-4">
-            {errorMsg || "No products in Firestore yet – add some in Firebase console"}
+            {errorMsg || "No products available yet"}
           </p>
         </main>
       </>
@@ -180,18 +236,37 @@ export default function MenuPage() {
               {filteredItems.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-3xl overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-4 border border-gray-100 group"
+                  className="bg-white rounded-3xl overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-4 border border-gray-100 group relative"
                 >
+                  {/* Like Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLike(item.id);
+                    }}
+                    className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white/80 shadow hover:bg-white transition"
+                  >
+                    <span className="text-2xl">
+                      {likedItems.has(item.id) ? "❤️" : "🤍"}
+                    </span>
+                  </button>
+
                   <div className="relative h-72 overflow-hidden">
                     <img
                       src={item.image_url || "https://via.placeholder.com/400?text=No+Image"}
                       alt={item.name}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
+                    {item.image_urls && item.image_urls.length > 1 && (
+                      <div className="absolute bottom-4 left-4 bg-black/60 text-white text-xs px-3 py-1 rounded-full">
+                        +{item.image_urls.length - 1} more photos
+                      </div>
+                    )}
                     <div className="absolute top-4 right-4 bg-brand-yellow text-black text-sm font-bold px-4 py-2 rounded-full shadow-md">
                       {item.category}
                     </div>
                   </div>
+
                   <div className="p-6">
                     <h3 className="text-2xl font-bold mb-3 text-brand-red line-clamp-2 group-hover:text-brand-orange transition-colors">
                       {item.name}
@@ -201,7 +276,7 @@ export default function MenuPage() {
                     </p>
                     <div className="flex justify-between items-center">
                       <span className="text-2xl font-bold text-brand-green">
-                        UGX {item.price.toLocaleString()}
+                        UGX {(Number(item.price) || 0).toLocaleString()}
                       </span>
                       <button
                         onClick={() => {

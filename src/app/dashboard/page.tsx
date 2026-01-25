@@ -2,339 +2,375 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Navbar from "@/app/components/Navbar";
-import { useCartStore } from "@/app/store/cartStore"; // assuming correct path
-import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
+import Navbar from "@/app/components/Navbar";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { signOut } from "firebase/auth";
+import toast from "react-hot-toast";
 import Link from "next/link";
-
-interface Order {
-  id: number;
-  items: any[];
-  total: number;
-  date: string;
-  status: string;
-}
+import { useCartStore } from "@/app/store/cartStore";
 
 export default function UserDashboard() {
-  useAuth("user"); // Require user role
+  const { user, role, loading: authLoading } = useAuth("user");
+  const { cart, totalPrice, removeFromCart } = useCartStore();
 
-  const { cart, removeFromCart, addToCart, clearCart, totalPrice } = useCartStore();
-  const [instructions, setInstructions] = useState("");
-  const [tab, setTab] = useState<"cart" | "history" | "profile">("cart");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profile, setProfile] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    createdAt: "",
+  });
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [orders, setOrders] = useState([]);
+  const [likedItems, setLikedItems] = useState([]);
 
-  // Load order history safely on client only
-  const [orderHistory, setOrderHistory] = useState<Order[]>([]);
-
+  // Fetch profile
   useEffect(() => {
-    // This only runs in the browser after mount
-    if (typeof window !== "undefined") {
+    if (!user) return;
+
+    const fetchProfile = async () => {
+      setProfileLoading(true);
       try {
-        const stored = localStorage.getItem("orderHistory");
-        if (stored) {
-          setOrderHistory(JSON.parse(stored));
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setProfile({
+            fullName: data.fullName || user.displayName || "User",
+            phone: data.phone || "Not set",
+            email: data.email || user.email || "Not set",
+            createdAt: data.createdAt
+              ? new Date(data.createdAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })
+              : "Unknown",
+          });
+        } else {
+          setProfile({
+            fullName: user.displayName || "User",
+            phone: "Not set",
+            email: user.email || "Not set",
+            createdAt: "Unknown",
+          });
         }
       } catch (err) {
-        console.error("Failed to load order history:", err);
+        console.error("Profile fetch error:", err);
+        toast.error("Could not load profile");
+      } finally {
+        setProfileLoading(false);
       }
-    }
-  }, []);
-
-  const saveOrderToHistory = () => {
-    const newOrder: Order = {
-      id: Date.now(),
-      items: cart,
-      total: totalPrice(),
-      date: new Date().toLocaleString(),
-      status: "Delivered",
     };
 
-    const updatedHistory = [newOrder, ...orderHistory];
+    fetchProfile();
+  }, [user]);
 
-    setOrderHistory(updatedHistory);
+  // Fetch past orders
+  useEffect(() => {
+    if (!user) return;
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("orderHistory", JSON.stringify(updatedHistory));
+    const fetchOrders = async () => {
+      try {
+        const q = query(collection(db, "orders"), where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(q);
+        const ordersList = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setOrders(ordersList);
+      } catch (err) {
+        console.error("Orders fetch error:", err);
+        toast.error("Could not load past orders");
+      }
+    };
+
+    fetchOrders();
+  }, [user]);
+
+  // Fetch liked items (from subcollection users/{uid}/likedItems)
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchLiked = async () => {
+      try {
+        const likedSnapshot = await getDocs(collection(db, "users", user.uid, "likedItems"));
+        const likedList = likedSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setLikedItems(likedList);
+      } catch (err) {
+        console.error("Liked items fetch error:", err);
+        toast.error("Could not load liked items");
+      }
+    };
+
+    fetchLiked();
+  }, [user]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast.success("Logged out successfully");
+    } catch (err) {
+      toast.error("Logout failed");
     }
   };
 
-  const phoneNumber = "256756348528";
+  if (authLoading || profileLoading) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen pt-20 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-brand-red border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-xl text-gray-700">Loading your dashboard...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
-  const handleWhatsAppOrder = () => {
-    if (cart.length === 0) {
-      toast.error("Your tray is empty! Add some food first.");
-      return;
-    }
-
-    const itemDetails = cart
-      .map((item) => `• ${item.name} (x${item.quantity}) - UGX ${(item.price * item.quantity).toLocaleString()}`)
-      .join("\n");
-
-    const message =
-      `*FRESH$FASTFOOD-HUB ORDER* 📋\n\n` +
-      `*Items Ordered:*\n${itemDetails}\n\n` +
-      `*Grand Total:* UGX ${totalPrice().toLocaleString()}\n` +
-      `--------------------------\n` +
-      `*Notes:* ${instructions || "None"}\n` +
-      `--------------------------\n` +
-      `*Confirming for delivery!* 🛵`;
-
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
-
-    // Save to history before sending
-    saveOrderToHistory();
-
-    window.location.assign(whatsappUrl);
-  };
+  if (role !== "user") return null;
 
   return (
     <>
       <Navbar />
 
-      {/* Floating Total (Mobile) */}
-      {cart.length > 0 && tab === "cart" && (
-        <div className="fixed bottom-24 right-6 z-50 bg-brand-red text-white px-6 py-3 rounded-full shadow-2xl font-black animate-bounce md:hidden border-2 border-white">
-          UGX {totalPrice().toLocaleString()}
-        </div>
-      )}
+      <div className="min-h-screen pt-20 bg-gradient-to-br from-orange-100 via-red-100 to-yellow-100 flex relative">
+        {/* Mobile Sidebar Toggle */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="md:hidden fixed top-24 left-4 z-50 bg-brand-red p-3 rounded-full shadow-lg text-white focus:outline-none"
+        >
+          {sidebarOpen ? "✕" : "☰"}
+        </button>
 
-      <main className="min-h-screen bg-gray-50 pt-28 pb-12 px-6">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter">
-                Your <span className="text-brand-red">Command</span> Center
-              </h1>
-              <p className="text-gray-500 font-bold mt-2 uppercase text-xs tracking-widest">
-                Manage your tray and confirm your Kampala delivery
+        {/* Sidebar */}
+        <aside
+          className={`fixed inset-y-0 left-0 w-72 bg-white shadow-2xl border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-40 md:translate-x-0 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } md:relative md:shadow-none`}
+        >
+          <div className="p-6 border-b bg-gradient-to-r from-brand-red to-red-600 text-white">
+            <h2 className="text-2xl font-bold">
+              Hi, {profile.fullName.split(" ")[0] || "Welcome"}!
+            </h2>
+            <p className="text-sm opacity-90 mt-1">{profile.email}</p>
+          </div>
+
+          <nav className="p-4 space-y-1">
+            <Link
+              href="/dashboard"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-xl bg-red-50 text-brand-red font-medium hover:bg-red-100 transition"
+            >
+              <span className="text-xl">🏠</span>
+              Dashboard Home
+            </Link>
+
+            <Link
+              href="/menu"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 transition"
+            >
+              <span className="text-xl">🍔</span>
+              Browse Menu
+            </Link>
+
+            <Link
+              href="/cart"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 transition"
+            >
+              <span className="text-xl">🛒</span>
+              Cart ({cart.length})
+            </Link>
+
+            <Link
+              href="/checkout"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 transition"
+            >
+              <span className="text-xl">💳</span>
+              Checkout
+            </Link>
+
+            <Link
+              href="/orders"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 transition"
+            >
+              <span className="text-xl">📦</span>
+              My Orders ({orders.length})
+            </Link>
+
+            <Link
+              href="/profile"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 transition"
+            >
+              <span className="text-xl">👤</span>
+              Edit Profile
+            </Link>
+
+            <a
+              href="https://wa.me/256756348528"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 transition"
+            >
+              <span className="text-xl">💬</span>
+              Contact Support
+            </a>
+
+            <button
+              onClick={() => {
+                handleLogout();
+                setSidebarOpen(false);
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl text-red-600 hover:bg-red-50 transition mt-8"
+            >
+              <span className="text-xl">🚪</span>
+              Logout
+            </button>
+          </nav>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-6 md:p-10">
+          <h1 className="text-3xl md:text-4xl font-bold text-brand-red mb-8">
+            Hello, {profile.fullName || "Welcome back"}!
+          </h1>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+              <h3 className="text-lg font-semibold text-gray-700">Items in Cart</h3>
+              <p className="text-4xl font-bold text-brand-red mt-2">{cart.length}</p>
+              <Link href="/cart" className="text-sm text-brand-red hover:underline mt-2 block">
+                View cart →
+              </Link>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+              <h3 className="text-lg font-semibold text-gray-700">Cart Total</h3>
+              <p className="text-4xl font-bold text-brand-green mt-2">
+                UGX {totalPrice().toLocaleString()}
+              </p>
+              <Link href="/checkout" className="text-sm text-brand-red hover:underline mt-2 block">
+                Proceed to checkout →
+              </Link>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+              <h3 className="text-lg font-semibold text-gray-700">Member Since</h3>
+              <p className="text-2xl font-bold text-gray-600 mt-2">
+                {profile.createdAt || "Just joined"}
               </p>
             </div>
-            <button
-              onClick={clearCart}
-              className="bg-white border-2 border-gray-200 text-gray-400 hover:border-brand-red hover:text-brand-red px-6 py-2 rounded-2xl text-xs font-black transition-all active:scale-90"
-            >
-              RESET TRAY
-            </button>
           </div>
 
-          {/* Tabs */}
-          <div className="bg-white p-2 rounded-2xl shadow-md mb-8 flex justify-center gap-2 flex-wrap">
-            <button
-              onClick={() => setTab("cart")}
-              className={`px-6 py-3 rounded-full ${tab === "cart" ? "bg-brand-red text-white" : "bg-gray-100 text-gray-700"} font-bold transition`}
-            >
-              Cart
-            </button>
-            <button
-              onClick={() => setTab("history")}
-              className={`px-6 py-3 rounded-full ${tab === "history" ? "bg-brand-red text-white" : "bg-gray-100 text-gray-700"} font-bold transition`}
-            >
-              Order History
-            </button>
-            <button
-              onClick={() => setTab("profile")}
-              className={`px-6 py-3 rounded-full ${tab === "profile" ? "bg-brand-red text-white" : "bg-gray-100 text-gray-700"} font-bold transition`}
-            >
-              Profile
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          {tab === "cart" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Cart Items & Notes */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-gray-100 relative overflow-hidden">
-                  {/* Background Pattern */}
-                  <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-9xl">🍳</div>
-
-                  {cart.length > 0 ? (
-                    <div className="space-y-8 relative z-10">
-                      {cart.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex flex-col sm:flex-row items-center justify-between border-b border-gray-100 pb-8 group last:border-b-0"
-                        >
-                          <Link
-                            href={`/menu/${item.id}`}
-                            className="flex items-center gap-6 flex-1 w-full sm:w-auto mb-4 sm:mb-0 hover:opacity-90 transition"
-                          >
-                            <div className="w-24 h-24 rounded-[2rem] overflow-hidden relative shadow-lg ring-4 ring-gray-50">
-                              <img
-                                src={item.imageUrl}
-                                alt={item.name}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                              />
-                            </div>
-                            <div>
-                              <p className="font-black text-gray-900 text-xl group-hover:text-brand-red transition-colors">
-                                {item.name}
-                              </p>
-                              <p className="text-brand-green font-black">
-                                UGX {item.price.toLocaleString()}
-                              </p>
-                            </div>
-                          </Link>
-
-                          <div className="flex items-center bg-gray-50 rounded-2xl p-2 border border-gray-100">
-                            <button
-                              onClick={() => removeFromCart(item.id)}
-                              className="w-10 h-10 flex items-center justify-center font-black text-2xl hover:bg-white hover:shadow-sm rounded-xl transition-all text-brand-red"
-                            >
-                              -
-                            </button>
-                            <span className="px-6 font-black text-lg">{item.quantity}</span>
-                            <button
-                              onClick={() => addToCart(item)}
-                              className="w-10 h-10 flex items-center justify-center font-black text-2xl hover:bg-white hover:shadow-sm rounded-xl transition-all text-brand-green"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-20">
-                      <div className="text-6xl mb-6">📥</div>
-                      <p className="text-gray-400 font-black text-xl mb-8 uppercase tracking-tighter">
-                        Your tray is empty.
+          {/* Past Orders */}
+          <div className="bg-white p-8 rounded-2xl shadow-xl mb-12">
+            <h2 className="text-2xl font-bold mb-6">Your Past Orders ({orders.length})</h2>
+            {orders.length === 0 ? (
+              <p className="text-gray-600 text-center py-8">
+                No orders yet — place your first one from the menu!
+              </p>
+            ) : (
+              <div className="space-y-6">
+                {orders.map((order) => (
+                  <div key={order.id} className="border rounded-xl p-6 shadow-sm hover:shadow-md transition">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="font-bold text-lg">Order #{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-gray-600">
+                          {order.createdAt
+                            ? new Date(order.createdAt).toLocaleString("en-US", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })
+                            : "Date unknown"}
+                        </p>
+                      </div>
+                      <p className="text-xl font-bold text-brand-green">
+                        UGX {(order.total || 0).toLocaleString()}
                       </p>
-                      <Link
-                        href="/menu"
-                        className="inline-block bg-brand-red text-white px-12 py-5 rounded-[2rem] font-black shadow-xl hover:shadow-none transition-all hover:translate-y-1"
-                      >
-                        VIEW THE MENU
-                      </Link>
                     </div>
-                  )}
-                </div>
-
-                {/* Special Instructions */}
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100">
-                  <h3 className="text-xl font-black mb-4 flex items-center gap-3">
-                    <span className="bg-brand-yellow/20 p-2 rounded-lg">📝</span>
-                    Special Preparation Notes
-                  </h3>
-                  <textarea
-                    className="w-full h-32 p-6 bg-gray-50 rounded-[2rem] border-2 border-transparent focus:border-brand-yellow focus:bg-white outline-none transition-all font-bold text-gray-700 resize-none"
-                    placeholder="e.g. Extra onions on the Rolex, or 'Don't put chili'..."
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Summary Sidebar */}
-              <div className="lg:col-span-1">
-                <div className="bg-gray-900 text-white p-10 rounded-[3.5rem] shadow-2xl sticky top-28 border-4 border-white/5">
-                  <div className="flex items-center gap-3 mb-8">
-                    <div className="w-3 h-3 bg-brand-green rounded-full animate-pulse" />
-                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">Final Checkout</h3>
-                  </div>
-
-                  <div className="space-y-6 mb-12">
-                    <div className="flex justify-between items-center opacity-60">
-                      <span className="font-bold">Total Items</span>
-                      <span className="font-black text-xl">{cart.reduce((acc, item) => acc + item.quantity, 0)}</span>
-                    </div>
-                    <div className="h-[1px] bg-white/10 w-full" />
-                    <div>
-                      <span className="text-gray-400 font-bold block mb-2 uppercase text-[10px] tracking-widest">Grand Total</span>
-                      <span className="text-4xl font-black text-brand-yellow tracking-tighter">
-                        UGX {totalPrice().toLocaleString()}
+                    <p className="text-sm">
+                      Status: <span className={`font-medium ${order.status === "delivered" ? "text-green-600" : "text-orange-600"}`}>
+                        {order.status || "Pending"}
                       </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleWhatsAppOrder}
-                    className="w-full bg-brand-yellow text-black py-7 rounded-[2.5rem] font-black text-2xl hover:bg-white transition-all shadow-[0_20px_40px_rgba(255,214,0,0.2)] flex items-center justify-center gap-4 group"
-                  >
-                    <span>ORDER NOW</span>
-                    <span className="group-hover:translate-x-2 transition-transform">→</span>
-                  </button>
-
-                  <div className="mt-8 flex items-center gap-4 p-4 bg-white/5 rounded-2xl">
-                    <span className="text-2xl">⚡</span>
-                    <p className="text-[10px] font-bold text-gray-400 leading-tight uppercase">
-                      Orders are sent directly to our WhatsApp hub for instant confirmation.
+                    </p>
+                    <p className="text-sm mt-2">
+                      Items: {order.items?.length || 0}
                     </p>
                   </div>
-                </div>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {tab === "history" && (
-            <div className="bg-white p-8 rounded-2xl shadow-lg">
-              <h2 className="text-3xl font-bold mb-6">Order History</h2>
-              {orderHistory.length > 0 ? (
-                <div className="space-y-6">
-                  {orderHistory.map((order) => (
-                    <div key={order.id} className="p-6 border rounded-2xl bg-gray-50">
-                      <div className="flex justify-between items-center mb-4">
-                        <p className="font-black text-lg">Order #{order.id}</p>
-                        <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
-                          {order.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">Date: {order.date}</p>
-                      <p className="font-medium mb-2">Items:</p>
-                      <ul className="text-sm text-gray-700 space-y-1">
-                        {order.items.map((item: any, idx: number) => (
-                          <li key={idx}>
-                            {item.name} × {item.quantity} - UGX {(item.price * item.quantity).toLocaleString()}
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="mt-4 font-bold text-lg text-brand-red">
-                        Total: UGX {order.total.toLocaleString()}
+          {/* Liked Items */}
+          <div className="bg-white p-8 rounded-2xl shadow-xl mb-12">
+            <h2 className="text-2xl font-bold mb-6">Liked Items ({likedItems.length})</h2>
+            {likedItems.length === 0 ? (
+              <p className="text-gray-600 text-center py-8">
+                No liked items yet — browse the menu and tap the heart!
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {likedItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="border rounded-xl overflow-hidden shadow hover:shadow-lg transition"
+                  >
+                    <img
+                      src={item.image_url || "https://via.placeholder.com/400?text=No+Image"}
+                      alt={item.name}
+                      className="w-full h-40 object-cover"
+                    />
+                    <div className="p-4">
+                      <h4 className="font-bold text-lg">{item.name}</h4>
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {item.description || "No description"}
+                      </p>
+                      <p className="text-brand-green font-bold mt-2">
+                        UGX {(Number(item.price) || 0).toLocaleString()}
                       </p>
                     </div>
-                  ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white p-8 rounded-2xl shadow-xl">
+            <h2 className="text-2xl font-bold mb-6">Recent Activity</h2>
+            <div className="space-y-4">
+              {cart.length > 0 ? (
+                <div className="border-l-4 border-brand-yellow pl-4 py-3">
+                  <p className="font-medium">Added items to cart</p>
+                  <p className="text-sm text-gray-600">
+                    {cart.length} item{cart.length !== 1 ? "s" : ""} —{" "}
+                    {new Date().toLocaleString("en-US", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <p className="text-xl font-bold mb-2">No orders yet</p>
-                  <p>Place your first order and it will appear here</p>
-                </div>
+                <p className="text-gray-600">No recent activity — start ordering something delicious!</p>
               )}
+              {/* You can expand this with real logs later */}
             </div>
-          )}
-
-          {tab === "profile" && (
-            <div className="bg-white p-8 rounded-2xl shadow-lg">
-              <h2 className="text-3xl font-bold mb-6">Profile</h2>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Name</label>
-                    <p className="font-bold text-lg">Akandwanaho</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
-                    <p className="font-bold text-lg">example@domain.com</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Phone</label>
-                    <p className="font-bold text-lg">+256 756 348 528</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Default Address</label>
-                    <p className="font-bold text-lg">Plot 12, Kampala Road</p>
-                  </div>
-                </div>
-
-                <button className="mt-6 px-8 py-4 bg-brand-red text-white font-bold rounded-2xl hover:bg-red-700 transition shadow-lg">
-                  Edit Profile
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </>
   );
 }

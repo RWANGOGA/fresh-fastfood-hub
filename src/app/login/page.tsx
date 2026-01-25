@@ -14,19 +14,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast.success("Logged in successfully!");
-      router.push("/"); // or "/admin/dashboard" or "/menu"
+      router.push("/dashboard"); // Redirect to dashboard – hook handles role
     } catch (error: any) {
       let errMsg = "Login failed";
-      if (error.code === "auth/user-not-found") errMsg = "No account found with this email";
+      if (error.code === "auth/user-not-found") errMsg = "No account found";
       if (error.code === "auth/wrong-password") errMsg = "Incorrect password";
-      if (error.code === "auth/invalid-email") errMsg = "Invalid email format";
+      if (error.code === "auth/invalid-email") errMsg = "Invalid email";
       toast.error(errMsg);
       console.error(error);
     } finally {
@@ -41,11 +41,11 @@ export default function LoginPage() {
         
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
+            <label className="block text-sm font-medium mb-2">Email *</label>
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value.trim())}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full p-4 border rounded-2xl focus:ring-2 focus:ring-brand-red outline-none"
               placeholder="your@email.com"
@@ -53,7 +53,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Password</label>
+            <label className="block text-sm font-medium mb-2">Password *</label>
             <input
               type="password"
               value={password}
