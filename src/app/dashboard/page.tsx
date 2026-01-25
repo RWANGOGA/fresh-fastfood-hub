@@ -11,6 +11,25 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { useCartStore } from "@/app/store/cartStore";
 
+// Define types for safety
+interface Order {
+  id: string;
+  userId: string;
+  items: Array<{ id: string; name: string; price: number; quantity: number; imageUrl: string }>;
+  total: number;
+  status: "pending" | "processing" | "delivered" | "cancelled";
+  createdAt: string;
+  // Add more fields if you save them in checkout (delivery, paymentMethod, etc.)
+}
+
+interface LikedItem {
+  id: string;
+  name: string;
+  price: number;
+  image_url: string;
+  description?: string;
+}
+
 export default function UserDashboard() {
   const { user, role, loading: authLoading } = useAuth("user");
   const { cart, totalPrice, removeFromCart } = useCartStore();
@@ -23,10 +42,10 @@ export default function UserDashboard() {
     createdAt: "",
   });
   const [profileLoading, setProfileLoading] = useState(true);
-  const [orders, setOrders] = useState([]);
-  const [likedItems, setLikedItems] = useState([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [likedItems, setLikedItems] = useState<LikedItem[]>([]);
 
-  // Fetch profile
+  // Fetch profile from Firestore
   useEffect(() => {
     if (!user) return;
 
@@ -75,10 +94,17 @@ export default function UserDashboard() {
       try {
         const q = query(collection(db, "orders"), where("userId", "==", user.uid));
         const querySnapshot = await getDocs(q);
-        const ordersList = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const ordersList: Order[] = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            userId: data.userId || user.uid,
+            items: data.items || [],
+            total: Number(data.total) || 0,
+            status: data.status || "pending",
+            createdAt: data.createdAt || "",
+          };
+        });
         setOrders(ordersList);
       } catch (err) {
         console.error("Orders fetch error:", err);
@@ -89,17 +115,23 @@ export default function UserDashboard() {
     fetchOrders();
   }, [user]);
 
-  // Fetch liked items (from subcollection users/{uid}/likedItems)
+  // Fetch liked items
   useEffect(() => {
     if (!user) return;
 
     const fetchLiked = async () => {
       try {
         const likedSnapshot = await getDocs(collection(db, "users", user.uid, "likedItems"));
-        const likedList = likedSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const likedList: LikedItem[] = likedSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name || "Unnamed",
+            price: Number(data.price) || 0,
+            image_url: data.image_url || "",
+            description: data.description || "",
+          };
+        });
         setLikedItems(likedList);
       } catch (err) {
         console.error("Liked items fetch error:", err);
@@ -152,7 +184,7 @@ export default function UserDashboard() {
         <aside
           className={`fixed inset-y-0 left-0 w-72 bg-white shadow-2xl border-r border-gray-200 transform transition-transform duration-300 ease-in-out z-40 md:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } md:relative md:shadow-none`}
+          } md:relative md:shadow-none overflow-y-auto`}
         >
           <div className="p-6 border-b bg-gradient-to-r from-brand-red to-red-600 text-white">
             <h2 className="text-2xl font-bold">
@@ -366,7 +398,6 @@ export default function UserDashboard() {
               ) : (
                 <p className="text-gray-600">No recent activity — start ordering something delicious!</p>
               )}
-              {/* You can expand this with real logs later */}
             </div>
           </div>
         </main>
