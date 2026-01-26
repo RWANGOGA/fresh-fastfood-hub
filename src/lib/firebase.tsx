@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
-// Your Firebase config (copied from Firebase Console)
+// Your Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyD-MTmvYncl4S8b3FlLITswseTqH8QOxu4",
   authDomain: "fresh-fastfood-hub-ab741.firebaseapp.com",
@@ -21,3 +21,5 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+
+export default app;

@@ -1,14 +1,19 @@
-// src/store/cartStore.ts
+// src/app/store/cartStore.ts
+import { useEffect } from 'react';
 import { create } from 'zustand';
+import { useAuth } from '@/hooks/useAuth';
 
-// Key for localStorage
-const CART_STORAGE_KEY = 'freshfastfoodhub-cart';
+// Helper to get user-specific storage key
+const getCartStorageKey = (userId: string | null | undefined) => {
+  return userId ? `freshfastfoodhub-cart-${userId}` : 'freshfastfoodhub-cart-guest';
+};
 
-// Helper to load cart from localStorage
-const loadCartFromStorage = (): CartItem[] => {
-  if (typeof window === 'undefined') return []; // Server-side safety
+// Load cart from localStorage
+const loadCartFromStorage = (userId: string | null | undefined): CartItem[] => {
+  if (typeof window === 'undefined') return [];
   try {
-    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    const key = getCartStorageKey(userId);
+    const stored = localStorage.getItem(key);
     return stored ? JSON.parse(stored) : [];
   } catch (e) {
     console.error('Failed to load cart from storage:', e);
@@ -16,11 +21,12 @@ const loadCartFromStorage = (): CartItem[] => {
   }
 };
 
-// Helper to save cart to localStorage
-const saveCartToStorage = (cart: CartItem[]) => {
+// Save cart to localStorage
+const saveCartToStorage = (cart: CartItem[], userId: string | null | undefined) => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    const key = getCartStorageKey(userId);
+    localStorage.setItem(key, JSON.stringify(cart));
   } catch (e) {
     console.error('Failed to save cart to storage:', e);
   }
@@ -36,6 +42,8 @@ interface CartItem {
 
 interface CartState {
   cart: CartItem[];
+  userId: string | null | undefined;
+  setUserId: (userId: string | null | undefined) => void;
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -44,46 +52,105 @@ interface CartState {
   totalPrice: () => number;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
-  cart: loadCartFromStorage(), // Load on init
+export const useCartStore = create<CartState>((set, get) => {
+  return {
+    cart: [],
+    userId: null,
 
-  addToCart: (newItem) =>
-    set((state) => {
-      const existing = state.cart.find((i) => i.id === newItem.id);
-      let newCart;
-      if (existing) {
-        newCart = state.cart.map((i) =>
-          i.id === newItem.id ? { ...i, quantity: i.quantity + 1 } : i
+    setUserId: (userId) => set({ userId }),
+
+    addToCart: (newItem) =>
+      set((state) => {
+        const existing = state.cart.find((i) => i.id === newItem.id);
+        let newCart;
+        if (existing) {
+          newCart = state.cart.map((i) =>
+            i.id === newItem.id ? { ...i, quantity: i.quantity + (newItem.quantity || 1) } : i
+          );
+        } else {
+          newCart = [...state.cart, { ...newItem, quantity: newItem.quantity || 1 }];
+        }
+        // Save to localStorage immediately
+        saveCartToStorage(newCart, state.userId);
+        return { cart: newCart };
+      }),
+
+    removeFromCart: (id) =>
+      set((state) => {
+        const newCart = state.cart.filter((item) => item.id !== id);
+        // Save to localStorage immediately
+        saveCartToStorage(newCart, state.userId);
+        return { cart: newCart };
+      }),
+
+    updateQuantity: (id, quantity) =>
+      set((state) => {
+        if (quantity < 1) return state;
+        const newCart = state.cart.map((i) =>
+          i.id === id ? { ...i, quantity } : i
         );
-      } else {
-        newCart = [...state.cart, { ...newItem, quantity: 1 }];
-      }
-      saveCartToStorage(newCart); // Save after change
-      return { cart: newCart };
-    }),
+        // Save to localStorage immediately
+        saveCartToStorage(newCart, state.userId);
+        return { cart: newCart };
+      }),
 
-  removeFromCart: (id) =>
-    set((state) => {
-      const newCart = state.cart.filter((i) => i.id !== id);
-      saveCartToStorage(newCart);
-      return { cart: newCart };
-    }),
+    clearCart: () =>
+      set((state) => {
+        saveCartToStorage([], state.userId);
+        return { cart: [] };
+      }),
 
-  updateQuantity: (id, quantity) =>
-    set((state) => {
-      const newCart = state.cart.map((i) =>
-        i.id === id ? { ...i, quantity: Math.max(1, quantity) } : i
-      );
-      saveCartToStorage(newCart);
-      return { cart: newCart };
-    }),
+    totalItems: () => get().cart.reduce((sum, i) => sum + i.quantity, 0),
+    totalPrice: () => get().cart.reduce((sum, i) => sum + i.price * i.quantity, 0),
+  };
+});
 
-  clearCart: () =>
-    set(() => {
-      saveCartToStorage([]);
-      return { cart: [] };
-    }),
+// Hook to sync cart with localStorage + user
+export const useSyncedCart = () => {
+  const { user } = useAuth();
+  const setUserId = useCartStore((state) => state.setUserId);
 
-  totalItems: () => get().cart.reduce((sum, i) => sum + i.quantity, 0),
-  totalPrice: () => get().cart.reduce((sum, i) => sum + i.price * i.quantity, 0),
-}));
+  useEffect(() => {
+    // Update userId in store
+    setUserId(user?.uid);
+
+    if (!user) {
+      // Guest mode or logged out → load guest cart
+      const guestCart = loadCartFromStorage(null);
+      useCartStore.setState({ cart: guestCart });
+      return;
+    }
+
+    // Logged in user → load their cart
+    const userCart = loadCartFromStorage(user.uid);
+    useCartStore.setState({ cart: userCart });
+
+    // Optional: merge guest cart with user cart on login
+    const guestCart = loadCartFromStorage(null);
+    if (guestCart.length > 0) {
+      // Merge guest cart items into user cart
+      const mergedCart = [...userCart];
+      guestCart.forEach((guestItem) => {
+        const existing = mergedCart.find((i) => i.id === guestItem.id);
+        if (existing) {
+          existing.quantity += guestItem.quantity;
+        } else {
+          mergedCart.push(guestItem);
+        }
+      });
+      useCartStore.setState({ cart: mergedCart });
+      saveCartToStorage(mergedCart, user.uid);
+      // Clear guest cart after merging
+      localStorage.removeItem(getCartStorageKey(null));
+    }
+  }, [user?.uid, setUserId]);
+
+  // Clear cart on logout
+  const resetOnLogout = () => {
+    const currentUserId = useCartStore.getState().userId;
+    useCartStore.getState().clearCart();
+    localStorage.removeItem(getCartStorageKey(currentUserId));
+  };
+
+  return { resetOnLogout };
+};

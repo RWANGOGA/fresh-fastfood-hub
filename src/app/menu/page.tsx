@@ -7,7 +7,7 @@ import { useCartStore } from "@/app/store/cartStore";
 import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
-import { useAuth } from "@/hooks/useAuth"; // assuming you have this hook
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 
 interface MenuItem {
@@ -15,8 +15,8 @@ interface MenuItem {
   name: string;
   description: string;
   price: number;
-  image_url: string;       // main image (for compatibility)
-  image_urls?: string[];   // multiple images (new)
+  image_url: string;
+  image_urls?: string[];
   category: string;
 }
 
@@ -42,7 +42,7 @@ const carouselImages = [
 ];
 
 export default function MenuPage() {
-  const { user } = useAuth(); // get current user
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState("All");
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -101,7 +101,7 @@ export default function MenuPage() {
     loadLikes();
   }, [user]);
 
-  // Toggle like / unlike
+  // Toggle like / unlike - FIXED VERSION
   const toggleLike = async (itemId: string) => {
     if (!user) {
       toast.error("Please login to like items");
@@ -121,11 +121,22 @@ export default function MenuPage() {
         });
         toast.success("Removed from liked items");
       } else {
-        // Like
+        // Like - SAVE FULL PRODUCT DATA
+        const item = menuItems.find((m) => m.id === itemId);
+        if (!item) {
+          toast.error("Item not found");
+          return;
+        }
+
         await setDoc(doc(db, "users", user.uid, "likedItems", itemId), {
-          productId: itemId,
+          name: item.name,
+          description: item.description || "",
+          price: item.price,
+          image_url: item.image_url || "",
+          category: item.category || "",
           likedAt: new Date().toISOString(),
         });
+        
         setLikedItems((prev) => new Set([...prev, itemId]));
         toast.success("Added to liked items ❤️");
       }
