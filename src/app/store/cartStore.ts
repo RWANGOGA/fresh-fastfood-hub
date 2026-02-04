@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useAuth } from '@/hooks/useAuth';
+import toast from 'react-hot-toast';
 
 // Types
 export interface CartItem {

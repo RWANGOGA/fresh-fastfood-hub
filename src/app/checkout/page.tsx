@@ -28,15 +28,18 @@ export default function CheckoutPage() {
 
   // Pre-fill name from logged-in user
   useEffect(() => {
-    if (user) {
+    if (user?.displayName) {
       setFormData((prev) => ({
         ...prev,
-        name: user.displayName || prev.name,
+        name: user.displayName,
       }));
     }
   }, [user]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // Handle change for input, select AND textarea
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -83,38 +86,37 @@ export default function CheckoutPage() {
         createdAt: serverTimestamp(),
       };
 
-      // Save order to Firestore
+      // Save to Firestore
       const orderRef = await addDoc(collection(db, "orders"), orderData);
       const orderId = orderRef.id;
 
       // Clear cart
       clearCart();
 
-      // Prepare WhatsApp message for admin
-      const adminPhone = "256756348528"; // 0756348528 without leading zero
+      // WhatsApp notification to admin
+      const adminPhone = "256756348528";
       const message = encodeURIComponent(
-        `🛒 NEW ORDER RECEIVED!\n\n` +
+        `🛒 *NEW ORDER RECEIVED!* 🛒\n\n` +
         `Order ID: ${orderId}\n` +
         `Customer: ${formData.name}\n` +
         `Phone: ${formData.phone}\n` +
-        `Email: ${user.email}\n` +
-        `Delivery: ${formData.address}, ${formData.area || "—"} \n` +
+        `Email: ${user.email || "Not provided"}\n` +
+        `Delivery: ${formData.address}${formData.area ? `, ${formData.area}` : ""}\n` +
         `Time: ${formData.deliveryTime}\n` +
         `Payment: ${formData.paymentMethod === "cash" ? "Cash on Delivery" : formData.paymentMethod}\n` +
         `Items: ${cart.length}\n` +
         `Total: UGX ${totalPrice().toLocaleString()}\n\n` +
-        `View in admin panel: https://your-app-url/admin/orders\n` +
-        `Thank you!`
+        `View in admin: https://your-app-url/admin/orders\n` +
+        `Thank you! 🍔🚚`
       );
 
-      // Open WhatsApp with pre-filled message
       window.open(`https://wa.me/${adminPhone}?text=${message}`, "_blank");
 
-      toast.success("Order placed successfully! 🎉 Message sent to admin.");
+      toast.success("Order placed successfully! 🎉 Admin notified.");
       router.push("/dashboard?order=success");
     } catch (err: any) {
-      console.error("Order submission error:", err);
-      toast.error("Failed to place order. Please try again.");
+      console.error("Order error:", err);
+      toast.error("Failed to place order. Try again.");
     } finally {
       setSubmitting(false);
     }
@@ -375,7 +377,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Place Order Button */}
+                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={submitting}
