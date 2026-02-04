@@ -13,6 +13,8 @@ import {
   query,
   setDoc,
   where,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { updateProfile as updateAuthProfile, signOut } from "firebase/auth";
@@ -25,6 +27,12 @@ import { useSyncedCart } from "@/app/store/cartStore";
 interface Order {
   id: string;
   userId: string;
+  name?: string;
+  phone?: string;
+  address?: string;
+  area?: string;
+  deliveryTime?: string;
+  paymentMethod?: string;
   items: Array<{ id: string; name: string; price: number; quantity: number; imageUrl: string }>;
   total: number;
   status: "pending" | "processing" | "delivered" | "cancelled";
@@ -145,6 +153,12 @@ export default function UserDashboard() {
           return {
             id: doc.id,
             userId: data.userId || user.uid,
+            name: data.name || "",
+            phone: data.phone || "",
+            address: data.address || "",
+            area: data.area || "",
+            deliveryTime: data.deliveryTime || "",
+            paymentMethod: data.paymentMethod || "",
             items: data.items || [],
             total: Number(data.total) || 0,
             status: data.status || "pending",
@@ -160,6 +174,31 @@ export default function UserDashboard() {
 
     fetchOrders();
   }, [user?.uid]);
+
+  // Handle cancel order (only for pending)
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm("Are you sure you want to cancel this order?")) return;
+
+    try {
+      await updateDoc(doc(db, "orders", orderId), {
+        status: "cancelled",
+        cancelledAt: serverTimestamp(),
+        cancelledBy: "user",
+      });
+
+      // Update local state
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId ? { ...o, status: "cancelled" } : o
+        )
+      );
+
+      toast.success("Order cancelled successfully");
+    } catch (err) {
+      console.error("Cancel error:", err);
+      toast.error("Failed to cancel order. Please try again.");
+    }
+  };
 
   // Fetch liked items
   useEffect(() => {
@@ -208,13 +247,10 @@ export default function UserDashboard() {
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
 
-      // Update local state
       setProfile((prev) => ({ ...prev, photoURL: downloadURL }));
 
-      // Save to Firestore
       await setDoc(doc(db, "users", user.uid), { photoURL: downloadURL }, { merge: true });
 
-      // Update Firebase Auth
       await updateAuthProfile(user, { photoURL: downloadURL });
 
       toast.success("Profile photo updated!");
@@ -371,13 +407,14 @@ export default function UserDashboard() {
               Checkout
             </Link>
 
+            {/* Updated link to tracking page */}
             <Link
-              href="/orders"
+              href="/order-tracking"
               onClick={() => setSidebarOpen(false)}
               className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 transition"
             >
               <span className="text-xl">📦</span>
-              My Orders ({orders.length})
+              My Orders & Tracking ({orders.length})
             </Link>
 
             <a
@@ -615,8 +652,8 @@ export default function UserDashboard() {
             <div className="bg-white p-6 rounded-2xl shadow-lg">
               <h3 className="text-lg font-semibold text-gray-700">Total Orders</h3>
               <p className="text-4xl font-bold text-brand-red mt-2">{orders.length}</p>
-              <Link href="/orders" className="text-sm text-brand-red hover:underline mt-2 block">
-                View orders →
+              <Link href="/order-tracking" className="text-sm text-brand-red hover:underline mt-2 block">
+                View & Track Orders →
               </Link>
             </div>
           </div>
@@ -670,24 +707,43 @@ export default function UserDashboard() {
             )}
           </div>
 
-          {/* Past Orders */}
+          {/* Past Orders - IMPROVED */}
           <div className="bg-white p-8 rounded-2xl shadow-xl mb-12">
             <h2 className="text-2xl font-bold mb-6">Your Past Orders ({orders.length})</h2>
+
             {orders.length === 0 ? (
-              <p className="text-gray-600 text-center py-8">
-                No orders yet — place your first one from the menu!
-              </p>
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🛍️</div>
+                <p className="text-xl font-medium text-gray-700 mb-2">
+                  No orders yet
+                </p>
+                <p className="text-gray-600 mb-6">
+                  Start shopping now!
+                </p>
+                <Link
+                  href="/menu"
+                  className="inline-block px-8 py-3 bg-brand-red text-white font-medium rounded-xl hover:bg-red-700 transition"
+                >
+                  Browse Menu
+                </Link>
+              </div>
             ) : (
               <div className="space-y-6">
                 {orders.map((order) => (
                   <div
                     key={order.id}
-                    className="border rounded-xl p-6 shadow-sm hover:shadow-md transition"
+                    className="border rounded-xl p-6 shadow-sm hover:shadow-md transition bg-gradient-to-r from-white to-gray-50"
                   >
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                       <div>
-                        <p className="font-bold text-lg">Order #{order.id.slice(0, 8)}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="font-bold text-lg md:text-xl flex items-center gap-2">
+                          Order #{order.id.slice(0, 8)}
+                          {order.status === "pending" && <span>⏳</span>}
+                          {order.status === "processing" && <span>🔄</span>}
+                          {order.status === "delivered" && <span>✅</span>}
+                          {order.status === "cancelled" && <span>❌</span>}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
                           {order.createdAt
                             ? new Date(order.createdAt).toLocaleString("en-US", {
                                 dateStyle: "medium",
@@ -696,21 +752,79 @@ export default function UserDashboard() {
                             : "Date unknown"}
                         </p>
                       </div>
-                      <p className="text-xl font-bold text-brand-green">
-                        UGX {(order.total || 0).toLocaleString()}
-                      </p>
+                      <div className="text-right">
+                        <p className="text-xl md:text-2xl font-bold text-brand-green">
+                          UGX {(order.total || 0).toLocaleString()}
+                        </p>
+                        <span
+                          className={`inline-block px-4 py-1 mt-2 rounded-full text-sm font-medium ${
+                            order.status === "delivered"
+                              ? "bg-green-100 text-green-700"
+                              : order.status === "processing"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : order.status === "cancelled"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-orange-100 text-orange-700"
+                          }`}
+                        >
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-sm">
-                      Status:{" "}
-                      <span
-                        className={`font-medium ${
-                          order.status === "delivered" ? "text-green-600" : "text-orange-600"
-                        }`}
+
+                    {/* More details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
+                      <div>
+                        <strong>Payment:</strong>{" "}
+                        {order.paymentMethod === "cash"
+                          ? "Cash on Delivery"
+                          : order.paymentMethod || "—"}
+                      </div>
+                      <div>
+                        <strong>Delivery Time:</strong> {order.deliveryTime || "—"}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <strong>Delivery:</strong>{" "}
+                        {order.address || "—"}
+                        {order.area && `, ${order.area}`}
+                      </div>
+                    </div>
+
+                    {/* Items */}
+                    <div className="mb-4">
+                      <p className="font-medium mb-2">Items ({order.items?.length || 0}):</p>
+                      <ul className="space-y-1 text-sm">
+                        {order.items?.map((item, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span>
+                              {item.name} × {item.quantity}
+                            </span>
+                            <span className="text-gray-600">
+                              UGX {(item.price * item.quantity).toLocaleString()}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-4 mt-4">
+                      {order.status === "pending" && (
+                        <button
+                          onClick={() => handleCancelOrder(order.id)}
+                          className="px-5 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition text-sm font-medium"
+                        >
+                          Cancel Order
+                        </button>
+                      )}
+
+                      <Link
+                        href="/order-tracking"
+                        className="px-5 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium"
                       >
-                        {order.status || "Pending"}
-                      </span>
-                    </p>
-                    <p className="text-sm mt-2">Items: {order.items?.length || 0}</p>
+                        View & Track Order
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>
