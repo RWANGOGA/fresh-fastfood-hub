@@ -1,109 +1,129 @@
-// src/app/order-tracking/page.tsx
+// src/app/checkout/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/app/components/Navbar";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, orderBy, desc } from "firebase/firestore";
-import Link from "next/link";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useCartStore } from "@/app/store/cartStore";
 import toast from "react-hot-toast";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-interface Order {
-  id: string;
-  userId: string;
-  items: Array<{ id: string; name: string; price: number; quantity: number; imageUrl: string }>;
-  total: number;
-  status: "pending" | "processing" | "delivered" | "cancelled";
-  createdAt: string;
-  name: string;
-  phone: string;
-  address: string;
-  area?: string;
-  deliveryTime: string;
-  paymentMethod: string;
-}
-
-export default function OrderTracking() {
+export default function CheckoutPage() {
   const { user, loading: authLoading } = useAuth("user");
-  const { addMultipleToCart } = useCartStore(); // assuming your store has this method
+  const { cart, totalPrice, clearCart } = useCartStore();
+  const router = useRouter();
 
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    area: "",
+    deliveryTime: "ASAP",
+    paymentMethod: "cash",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
-  // Fetch orders
-  const fetchOrders = async () => {
-    if (!user?.uid) return;
-
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, "orders"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-      const snapshot = await getDocs(q);
-
-      const ordersList: Order[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        const createdAtFormatted = data.createdAt?.toDate
-          ? data.createdAt.toDate().toLocaleString("en-US", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })
-          : data.createdAt || "Just now";
-
-        return {
-          id: doc.id,
-          userId: data.userId,
-          items: data.items || [],
-          total: Number(data.total) || 0,
-          status: data.status || "pending",
-          createdAt: createdAtFormatted,
-          name: data.name || "",
-          phone: data.phone || "",
-          address: data.address || "",
-          area: data.area || "",
-          deliveryTime: data.deliveryTime || "ASAP",
-          paymentMethod: data.paymentMethod || "Cash on Delivery",
-        };
-      });
-
-      setOrders(ordersList);
-    } catch (err) {
-      console.error("Error loading orders:", err);
-      // Silent fail - we show nice empty state instead
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Pre-fill name from logged-in user
   useEffect(() => {
-    fetchOrders();
-  }, [user?.uid]);
+    if (user?.displayName) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.displayName,
+      }));
+    }
+  }, [user]);
 
-  // Calculate grand total of all orders
-  const grandTotal = orders.reduce((sum, order) => sum + order.total, 0);
+  // Handle change for input, select, and textarea
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-  // Convert deliveryTime to friendly ETA
-  const getETA = (time: string) => {
-    switch (time) {
-      case "ASAP": return "≈ 30–45 min";
-      case "1hr": return "≈ 60 min";
-      case "2hr": return "≈ 2 hours";
-      case "later": return "Scheduled for later";
-      default: return time;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!user) {
+      toast.error("Please login to place order");
+      router.push("/login");
+      return;
+    }
+
+    if (!formData.name || !formData.phone || !formData.address) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    if (cart.length === 0) {
+      toast.error("Your cart is empty");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const orderData = {
+        userId: user.uid,
+        userEmail: user.email,
+        name: formData.name,
+        phone: formData.phone,
+        address: formData.address,
+        area: formData.area,
+        deliveryTime: formData.deliveryTime,
+        paymentMethod: formData.paymentMethod,
+        items: cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          imageUrl: item.imageUrl,
+        })),
+        total: totalPrice(),
+        status: "pending",
+        createdAt: serverTimestamp(),
+      };
+
+      // Save to Firestore
+      const orderRef = await addDoc(collection(db, "orders"), orderData);
+      const orderId = orderRef.id;
+
+      // Clear cart
+      clearCart();
+
+      // Send WhatsApp notification to admin
+      const adminPhone = "256756348528"; // 0756348528 without leading zero
+      const message = encodeURIComponent(
+        `🛒 *NEW ORDER RECEIVED!* 🛒\n\n` +
+        `Order ID: ${orderId}\n` +
+        `Customer: ${formData.name}\n` +
+        `Phone: ${formData.phone}\n` +
+        `Email: ${user.email || "Not provided"}\n` +
+        `Delivery: ${formData.address}${formData.area ? `, ${formData.area}` : ""}\n` +
+        `Time: ${formData.deliveryTime}\n` +
+        `Payment: ${formData.paymentMethod === "cash" ? "Cash on Delivery" : formData.paymentMethod}\n` +
+        `Items: ${cart.length}\n` +
+        `Total: UGX ${totalPrice().toLocaleString()}\n\n` +
+        `View in admin: https://your-app-url/admin/orders\n` +
+        `Thank you! 🍔🚚`
+      );
+
+      // Open WhatsApp
+      window.open(`https://wa.me/${adminPhone}?text=${message}`, "_blank");
+
+      toast.success("Order placed successfully! 🎉 Admin notified via WhatsApp.");
+      router.push("/dashboard?order=success");
+    } catch (err: any) {
+      console.error("Order submission error:", err);
+      toast.error("Failed to place order. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Reorder all items from an order
-  const handleReorder = (items: Order["items"]) => {
-    addMultipleToCart(items); // You need this method in your cart store
-    toast.success("Items added back to cart!");
-  };
-
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <>
         <Navbar />
@@ -118,15 +138,37 @@ export default function OrderTracking() {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen pt-20 flex items-center justify-center bg-gray-50">
+        <main className="min-h-screen pt-20 flex items-center justify-center bg-gray-50">
           <div className="text-center p-8 bg-white rounded-2xl shadow-xl max-w-md">
-            <h2 className="text-3xl font-bold text-brand-red mb-4">Please log in</h2>
-            <p className="text-gray-600 mb-6">Sign in to view and track your orders.</p>
-            <Link href="/login" className="inline-block px-10 py-4 bg-brand-yellow text-black font-bold rounded-full hover:bg-yellow-300 transition">
-              Log In
+            <h2 className="text-3xl font-bold text-brand-red mb-4">Please login to checkout</h2>
+            <Link
+              href="/login"
+              className="inline-block px-10 py-4 bg-brand-yellow text-black font-bold rounded-full hover:bg-yellow-300 transition"
+            >
+              Go to Login
             </Link>
           </div>
-        </div>
+        </main>
+      </>
+    );
+  }
+
+  if (cart.length === 0) {
+    return (
+      <>
+        <Navbar />
+        <main className="min-h-screen pt-20 flex items-center justify-center bg-gray-50">
+          <div className="text-center p-8 bg-white rounded-2xl shadow-xl max-w-md">
+            <h2 className="text-3xl font-bold text-brand-red mb-4">Your cart is empty</h2>
+            <p className="text-gray-600 mb-6">Add some delicious items first!</p>
+            <Link
+              href="/menu"
+              className="inline-block px-10 py-4 bg-brand-yellow text-black font-bold rounded-full hover:bg-yellow-300 transition"
+            >
+              Go to Menu
+            </Link>
+          </div>
+        </main>
       </>
     );
   }
@@ -134,199 +176,229 @@ export default function OrderTracking() {
   return (
     <>
       <Navbar />
+      <main className="min-h-screen pt-20 bg-gray-50 py-12 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <h1 className="text-4xl md:text-5xl font-bold text-brand-red mb-12 text-center">
+            Checkout
+          </h1>
 
-      <main
-        className="min-h-screen pt-20 bg-cover bg-center bg-fixed relative"
-        style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1606857521015-7f9fcf423740?auto=format&fit=crop&w=2000&q=80')`,
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60"></div>
+          <div className="grid md:grid-cols-2 gap-10">
+            {/* Left: Order Summary */}
+            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-xl">
+              <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center md:text-left">
+                Your Order
+              </h2>
 
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-16">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white drop-shadow-2xl text-center md:text-left">
-              Track Your Orders
-            </h1>
+              <div className="space-y-6">
+                {cart.map((item) => (
+                  <Link
+                    href={`/menu/${item.id}`}
+                    key={item.id}
+                    className="block hover:opacity-90 transition"
+                  >
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 last:border-b-0">
+                      <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden shadow">
+                          <img
+                            src={item.imageUrl || "https://via.placeholder.com/80"}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg">{item.name} × {item.quantity}</h3>
+                          <p className="text-sm text-gray-600">
+                            UGX {item.price.toLocaleString()} each
+                          </p>
+                        </div>
+                      </div>
+                      <p className="font-bold text-lg text-brand-green ml-auto">
+                        UGX {(item.price * item.quantity).toLocaleString()}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
 
-            <div className="flex gap-4">
-              <button
-                onClick={fetchOrders}
-                disabled={loading}
-                className="px-6 py-3 bg-white/90 backdrop-blur-sm text-brand-red font-bold rounded-full hover:bg-white transition shadow-lg disabled:opacity-50"
-              >
-                {loading ? "Refreshing..." : "↻ Refresh"}
-              </button>
+                <div className="flex justify-between pt-6 font-bold text-xl md:text-2xl border-t">
+                  <span>Grand Total</span>
+                  <span className="text-brand-red">UGX {totalPrice().toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
 
-              <Link
-                href="/dashboard"
-                className="px-6 py-3 bg-brand-yellow text-black font-bold rounded-full hover:bg-yellow-300 transition shadow-lg"
-              >
-                ← Dashboard
-              </Link>
+            {/* Right: Delivery & Payment Form */}
+            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-xl">
+              <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center md:text-left">
+                Delivery & Payment
+              </h2>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Full Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-yellow outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Phone Number *</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                      placeholder="e.g. 077xxxxxxx"
+                      className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-yellow outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Delivery Address *</label>
+                  <textarea
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    required
+                    rows={3}
+                    placeholder="Plot 12, Kololo, Kampala"
+                    className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-yellow outline-none resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Area / Suburb</label>
+                    <select
+                      name="area"
+                      value={formData.area}
+                      onChange={handleChange}
+                      className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-yellow outline-none"
+                    >
+                      <option value="">Select area</option>
+                      <option>Kampala Central</option>
+                      <option>Kololo / Nakasero</option>
+                      <option>Kamwokya</option>
+                      <option>Makindye</option>
+                      <option>Kabowa / Rubaga</option>
+                      <option>Entebbe</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Delivery Time</label>
+                    <select
+                      name="deliveryTime"
+                      value={formData.deliveryTime}
+                      onChange={handleChange}
+                      className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-brand-yellow outline-none"
+                    >
+                      <option value="ASAP">ASAP (30–60 min)</option>
+                      <option value="1hr">In 1 hour</option>
+                      <option value="2hr">In 2 hours</option>
+                      <option value="later">Schedule for later</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Payment Methods */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold mb-4">Payment Method</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <label
+                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        formData.paymentMethod === "cash"
+                          ? "border-brand-red bg-red-50"
+                          : "border-gray-300 hover:border-brand-yellow"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cash"
+                        checked={formData.paymentMethod === "cash"}
+                        onChange={handleChange}
+                        className="sr-only"
+                      />
+                      <div className="text-center">
+                        <span className="block text-2xl mb-2">💵</span>
+                        <span className="font-medium">Cash on Delivery</span>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        formData.paymentMethod === "momo"
+                          ? "border-brand-red bg-red-50"
+                          : "border-gray-300 hover:border-brand-yellow"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="momo"
+                        checked={formData.paymentMethod === "momo"}
+                        onChange={handleChange}
+                        className="sr-only"
+                      />
+                      <div className="text-center">
+                        <span className="block text-2xl mb-2">📱</span>
+                        <span className="font-medium">MTN MoMo</span>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        formData.paymentMethod === "airtel"
+                          ? "border-brand-red bg-red-50"
+                          : "border-gray-300 hover:border-brand-yellow"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="airtel"
+                        checked={formData.paymentMethod === "airtel"}
+                        onChange={handleChange}
+                        className="sr-only"
+                      />
+                      <div className="text-center">
+                        <span className="block text-2xl mb-2">📱</span>
+                        <span className="font-medium">Airtel Money</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Place Order Button */}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={`w-full py-5 bg-brand-red text-white font-bold text-xl rounded-full hover:bg-red-700 transition shadow-lg transform hover:scale-105 ${
+                    submitting ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {submitting ? "Placing Order..." : `Place Order – UGX ${totalPrice().toLocaleString()}`}
+                </button>
+              </form>
             </div>
           </div>
 
-          {/* Grand Total (only shown when there are orders) */}
-          {orders.length > 0 && (
-            <div className="bg-white/90 backdrop-blur-lg rounded-2xl p-6 mb-10 shadow-2xl text-center md:text-left">
-              <p className="text-lg text-gray-700">Total spent with us</p>
-              <p className="text-4xl md:text-5xl font-bold text-brand-green mt-2">
-                UGX {grandTotal.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                Thank you for choosing Fresh & Fast Food Hub! 🍔🚚
-              </p>
-            </div>
-          )}
-
-          {/* Orders List */}
-          {orders.length === 0 ? (
-            <div className="bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl p-12 md:p-16 text-center">
-              <div className="text-8xl mb-8 animate-bounce">🚚</div>
-              <h2 className="text-4xl md:text-5xl font-bold text-brand-red mb-6">
-                Your first order is waiting!
-              </h2>
-              <p className="text-xl md:text-2xl text-gray-800 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Fast. Fresh. Delivered with love. <br />
-                Place your first order today and taste the difference!
-              </p>
-              <Link
-                href="/menu"
-                className="inline-block px-12 py-5 bg-brand-red text-white text-xl font-bold rounded-full hover:bg-red-700 transition shadow-2xl transform hover:scale-105"
-              >
-                Start Ordering Now
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {orders.map((order) => (
-                <div
-                  key={order.id}
-                  className={`bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl overflow-hidden transition-all hover:shadow-2xl ${
-                    order.status === "cancelled" ? "opacity-75" : ""
-                  }`}
-                >
-                  {/* Header */}
-                  <div className="p-6 md:p-8 border-b bg-gradient-to-r from-gray-50 to-white">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      <div>
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-3">
-                          Order #{order.id.slice(0, 8)}
-                          {order.status === "cancelled" && (
-                            <span className="text-red-600 text-xl">✕ Cancelled</span>
-                          )}
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Placed on {order.createdAt}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-brand-green">
-                          UGX {order.total.toLocaleString()}
-                        </p>
-                        <span
-                          className={`inline-block px-5 py-2 mt-3 rounded-full text-sm font-medium ${
-                            order.status === "delivered"
-                              ? "bg-green-100 text-green-800"
-                              : order.status === "processing"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : order.status === "cancelled"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-orange-100 text-orange-800"
-                          }`}
-                        >
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Delivery Info & ETA */}
-                  <div className="p-6 md:p-8 grid md:grid-cols-2 gap-8 border-b">
-                    <div>
-                      <h4 className="font-bold text-lg mb-4">Delivery Information</h4>
-                      <div className="space-y-2 text-sm">
-                        <p><strong>Name:</strong> {order.name}</p>
-                        <p><strong>Phone:</strong> {order.phone}</p>
-                        <p><strong>Address:</strong> {order.address}</p>
-                        {order.area && <p><strong>Area:</strong> {order.area}</p>}
-                        <p>
-                          <strong>Estimated Time:</strong>{" "}
-                          <span className="font-medium text-brand-red">
-                            {getETA(order.deliveryTime)}
-                          </span>
-                        </p>
-                        <p><strong>Payment:</strong> {order.paymentMethod}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-bold text-lg mb-4">Order Items ({order.items.length})</h4>
-                      <div className="space-y-4">
-                        {order.items.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex items-center gap-4 pb-4 border-b last:border-b-0 last:pb-0 ${
-                              order.status === "cancelled" ? "line-through opacity-70" : ""
-                            }`}
-                          >
-                            <img
-                              src={item.imageUrl || "https://via.placeholder.com/80"}
-                              alt={item.name}
-                              className="w-16 h-16 rounded-lg object-cover shadow-sm"
-                            />
-                            <div className="flex-1">
-                              <h5 className="font-medium">{item.name}</h5>
-                              <p className="text-sm text-gray-600">
-                                × {item.quantity} • UGX {item.price.toLocaleString()} each
-                              </p>
-                            </div>
-                            <p className="font-bold text-brand-green whitespace-nowrap">
-                              UGX {(item.price * item.quantity).toLocaleString()}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="p-6 md:p-8 flex flex-wrap gap-4">
-                    <Link
-                      href="/menu"
-                      className="px-6 py-3 bg-brand-yellow text-black font-bold rounded-xl hover:bg-yellow-300 transition shadow-md"
-                    >
-                      Continue Shopping
-                    </Link>
-
-                    {order.status !== "delivered" && order.status !== "cancelled" && (
-                      <button
-                        onClick={() => handleReorder(order.items)}
-                        className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-md"
-                      >
-                        Reorder This
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="mt-10 text-center text-gray-600">
+            <Link href="/menu" className="hover:text-brand-red">
+              ← Continue Shopping
+            </Link>
+          </div>
         </div>
       </main>
     </>
   );
-}
-
-// Helper function for ETA display
-function getETA(time: string): string {
-  switch (time) {
-    case "ASAP": return "≈ 30–45 minutes";
-    case "1hr": return "≈ 60 minutes";
-    case "2hr": return "≈ 2 hours";
-    case "later": return "Scheduled for later";
-    default: return time;
-  }
 }
