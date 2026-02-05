@@ -35,50 +35,47 @@ const serviceVideos = [
 ];
 
 export default function HeroCarousel() {
-  const [phase, setPhase] = useState(PHASE_IMAGES);
   const [foodIndex, setFoodIndex] = useState(0);
   const [videoIndex, setVideoIndex] = useState(0);
+  const [currentSlide, setCurrentSlide] = useState<'image' | 'video'>('image');
+
+  // Create a continuous slide array: all images + all videos
+  const allSlides = [
+    ...foodSlides.map(slide => ({ type: 'image' as const, data: slide, index: foodSlides.indexOf(slide) })),
+    ...serviceVideos.map(video => ({ type: 'video' as const, data: video, index: serviceVideos.indexOf(video) })),
+  ];
+
+  const [globalIndex, setGlobalIndex] = useState(0);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (phase === PHASE_IMAGES) {
-      interval = setInterval(() => {
-        setFoodIndex((prev) => {
-          const next = (prev + 1) % foodSlides.length;
-          if (next === 0) {
-            // Immediately switch to videos after last image
-            setPhase(PHASE_VIDEOS);
-            setVideoIndex(0);
-          }
-          return next;
-        });
-      }, 4000);
-    } else if (phase === PHASE_VIDEOS) {
-      interval = setInterval(() => {
-        setVideoIndex((prev) => {
-          const next = (prev + 1) % serviceVideos.length;
-          if (next === 0) {
-            // Immediately switch back to images after last video
-            setPhase(PHASE_IMAGES);
-            setFoodIndex(0);
-          }
-          return next;
-        });
-      }, 15000); // ← This is per-video duration – adjust to match your actual video lengths
-    }
+    const interval = setInterval(() => {
+      setGlobalIndex((prev) => {
+        const nextIndex = (prev + 1) % allSlides.length;
+        const currentSlideData = allSlides[nextIndex];
+        
+        if (currentSlideData.type === 'image') {
+          setCurrentSlide('image');
+          setFoodIndex(currentSlideData.index);
+        } else {
+          setCurrentSlide('video');
+          setVideoIndex(currentSlideData.index);
+        }
+        
+        return nextIndex;
+      });
+    }, 4500); // 4.5 seconds per image/video - adjust as needed
 
     return () => clearInterval(interval);
-  }, [phase]);
+  }, []);
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
       {/* Food images phase */}
-      {phase === PHASE_IMAGES &&
+      {currentSlide === 'image' &&
         foodSlides.map((slide, index) => (
           <div
             key={`food-${index}`}
-            className={`absolute inset-0 transition-opacity duration-1500 ${
+            className={`absolute inset-0 transition-opacity duration-1000 ${
               index === foodIndex ? "opacity-100" : "opacity-0"
             }`}
           >
@@ -94,15 +91,14 @@ export default function HeroCarousel() {
         ))}
 
       {/* Video phase – full visibility */}
-      {phase === PHASE_VIDEOS &&
+      {currentSlide === 'video' &&
         serviceVideos.map((src, index) => (
           <video
             key={`video-${index}`}
             autoPlay
-            loop
             muted
             playsInline
-            className={`w-full h-full object-cover transition-opacity duration-1500 ${
+            className={`w-full h-full object-cover transition-opacity duration-1000 ${
               index === videoIndex ? "opacity-100" : "opacity-0"
             } brightness-110 contrast-110`} // Make videos brighter & clearer
           >

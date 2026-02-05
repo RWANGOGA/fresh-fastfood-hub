@@ -51,7 +51,6 @@ export default function UserDashboard() {
   const { user, role, loading: authLoading } = useAuth("user");
   const { cart, totalPrice, removeFromCart, clearCart } = useCartStore();
 
-  // Sync cart with localStorage per user
   useSyncedCart();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -68,7 +67,6 @@ export default function UserDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [likedItems, setLikedItems] = useState<LikedItem[]>([]);
 
-  // Editing states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editFormData, setEditFormData] = useState({
     fullName: "",
@@ -175,7 +173,6 @@ export default function UserDashboard() {
     fetchOrders();
   }, [user?.uid]);
 
-  // Handle cancel order (only for pending)
   const handleCancelOrder = async (orderId: string) => {
     if (!confirm("Are you sure you want to cancel this order?")) return;
 
@@ -186,11 +183,8 @@ export default function UserDashboard() {
         cancelledBy: "user",
       });
 
-      // Update local state
       setOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderId ? { ...o, status: "cancelled" } : o
-        )
+        prev.map((o) => (o.id === orderId ? { ...o, status: "cancelled" } : o))
       );
 
       toast.success("Order cancelled successfully");
@@ -227,7 +221,6 @@ export default function UserDashboard() {
     fetchLiked();
   }, [user?.uid]);
 
-  // Handle profile photo upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0] || !user) return;
     const file = e.target.files[0];
@@ -262,7 +255,6 @@ export default function UserDashboard() {
     }
   };
 
-  // Handle profile save
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -407,7 +399,6 @@ export default function UserDashboard() {
               Checkout
             </Link>
 
-            {/* Updated link to tracking page */}
             <Link
               href="/order-tracking"
               onClick={() => setSidebarOpen(false)}
@@ -707,7 +698,7 @@ export default function UserDashboard() {
             )}
           </div>
 
-          {/* Past Orders - IMPROVED */}
+          {/* Past Orders */}
           <div className="bg-white p-8 rounded-2xl shadow-xl mb-12">
             <h2 className="text-2xl font-bold mb-6">Your Past Orders ({orders.length})</h2>
 

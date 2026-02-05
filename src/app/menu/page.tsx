@@ -33,9 +33,8 @@ const categories = [
 const carouselImages = [
   "https://tb-static.uber.com/prod/image-proc/processed_images/38bce3348e282757f7d567e6f4a8ba51/fb86662148be855d931b37d6c1e5fcbe.jpeg",
   "https://tb-static.uber.com/prod/image-proc/processed_images/c996ccd6cb17d6d6ae85ca3ffe80e762/fb86662148be855d931b37d6c1e5fcbe.jpeg",
-  "https://www.smilepolitely.com/wp-content/uploads/2025/12/Rainbow-Garden-1-1024x769.jpg",
-  "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=1920&q=80",
   "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1920&q=80",
+  "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=1920&q=80",
   "https://images.unsplash.com/photo-1512568400610-62da28bc8a13?w=1920&q=80",
   "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1920&q=80",
   "https://images.unsplash.com/photo-1517959105821-eaf2591984ca?w=1920&q=80",
@@ -187,20 +186,20 @@ export default function MenuPage() {
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-gray-50">
+      <main className="min-h-screen bg-linear-to-b from-amber-50 via-white to-gray-50">
         {/* Welcome Heading + Carousel */}
-        <section className="bg-white py-20 px-6 text-center border-b border-gray-200">
-          <h1 className="text-5xl md:text-7xl font-extrabold text-brand-red mb-6">
+        <section className="bg-white py-8 sm:py-12 md:py-20 px-4 sm:px-6 text-center border-b border-gray-200">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold text-brand-red mb-4 sm:mb-6">
             Welcome To Fresh$FastFood-Hub!!
           </h1>
-          <p className="text-xl md:text-2xl text-gray-700 max-w-5xl mx-auto mb-12 font-medium">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700 max-w-5xl mx-auto mb-6 sm:mb-12 font-medium">
             Welcome to Fresh$FastFood-Hub's delicious universe. Everything from our Big on Breakfast, Refreshing Drinks, Decadent Milkshakes to your Generous Big Meals right here at your fingertips. 
-            <span className="block mt-6 text-brand-orange font-bold text-4xl">
+            <span className="block mt-4 sm:mt-6 text-brand-orange font-bold text-2xl sm:text-3xl md:text-4xl">
               ORDER NOW
             </span>
           </p>
 
-          <div className="relative max-w-7xl mx-auto h-96 md:h-[600px] overflow-hidden rounded-3xl shadow-2xl">
+          <div className="relative max-w-7xl mx-auto h-48 sm:h-64 md:h-96 lg:h-150 overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl">
             {carouselImages.map((img, idx) => (
               <div
                 key={idx}
@@ -209,7 +208,7 @@ export default function MenuPage() {
                 }`}
               >
                 <img src={img} alt={`Featured ${idx + 1}`} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-12">
+                <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent flex items-end justify-center pb-12">
                   <p className="text-white text-3xl md:text-5xl font-bold drop-shadow-2xl">
                     {idx % 2 === 0 ? "BIG ON BREAKFAST" : "GENEROUS BIG MEALS"}
                   </p>
@@ -220,13 +219,13 @@ export default function MenuPage() {
         </section>
 
         {/* Category Tabs */}
-        <section className="py-8 px-6 bg-white shadow-sm sticky top-20 z-10 overflow-x-auto">
-          <div className="max-w-7xl mx-auto flex justify-center gap-4 md:gap-6 whitespace-nowrap">
+        <section className="py-4 sm:py-8 px-4 sm:px-6 bg-white shadow-sm sticky top-20 z-10 overflow-x-auto">
+          <div className="max-w-7xl mx-auto flex justify-center gap-2 sm:gap-4 md:gap-6 whitespace-nowrap">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-6 py-3 rounded-full font-semibold text-base transition-all duration-300 ${
+                className={`px-3 sm:px-6 py-2 sm:py-3 rounded-full font-semibold text-xs sm:text-base transition-all duration-300 ${
                   activeCategory === cat
                     ? "bg-brand-red text-white shadow-lg scale-105"
                     : "bg-gray-200 text-gray-800 hover:bg-gray-300 hover:scale-105"
@@ -239,11 +238,11 @@ export default function MenuPage() {
         </section>
 
         {/* Menu Grid */}
-        <section className="py-20 px-6 max-w-7xl mx-auto relative">
+        <section className="py-8 sm:py-12 md:py-20 px-4 sm:px-6 max-w-7xl mx-auto relative">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/food.png')] opacity-5 pointer-events-none"></div>
 
           <div className="relative z-10">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 lg:gap-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 lg:gap-12">
               {filteredItems.map((item) => (
                 <div
                   key={item.id}
@@ -262,7 +261,7 @@ export default function MenuPage() {
                     </span>
                   </button>
 
-                  <div className="relative h-72 overflow-hidden">
+                  <div className="relative h-48 sm:h-56 md:h-72 overflow-hidden">
                     <img
                       src={item.image_url || "https://via.placeholder.com/400?text=No+Image"}
                       alt={item.name}
@@ -273,20 +272,20 @@ export default function MenuPage() {
                         +{item.image_urls.length - 1} more photos
                       </div>
                     )}
-                    <div className="absolute top-4 right-4 bg-brand-yellow text-black text-sm font-bold px-4 py-2 rounded-full shadow-md">
+                    <div className="absolute top-4 right-4 bg-brand-yellow text-black text-xs font-bold px-3 py-1 sm:px-4 sm:py-2 rounded-full shadow-md">
                       {item.category}
                     </div>
                   </div>
 
-                  <div className="p-6">
-                    <h3 className="text-2xl font-bold mb-3 text-brand-red line-clamp-2 group-hover:text-brand-orange transition-colors">
+                  <div className="p-4 sm:p-6">
+                    <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-brand-red line-clamp-2 group-hover:text-brand-orange transition-colors">
                       {item.name}
                     </h3>
-                    <p className="text-gray-700 mb-5 text-base line-clamp-3">
+                    <p className="text-gray-700 mb-4 sm:mb-5 text-sm sm:text-base line-clamp-3">
                       {item.description}
                     </p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-2xl font-bold text-brand-green">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                      <span className="text-xl sm:text-2xl font-bold text-brand-green">
                         UGX {(Number(item.price) || 0).toLocaleString()}
                       </span>
                       <button
@@ -300,7 +299,7 @@ export default function MenuPage() {
                           });
                           toast.success(`${item.name} added to cart! 🍔`);
                         }}
-                        className="px-8 py-4 bg-brand-yellow text-black font-bold rounded-xl hover:bg-yellow-300 transition shadow-lg transform hover:scale-105"
+                        className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-brand-yellow text-black font-bold rounded-lg sm:rounded-xl hover:bg-yellow-300 transition shadow-lg transform hover:scale-105 text-sm sm:text-base"
                       >
                         Add to Cart
                       </button>

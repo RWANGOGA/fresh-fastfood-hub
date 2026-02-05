@@ -113,7 +113,9 @@ export default function CheckoutPage() {
       window.open(`https://wa.me/${adminPhone}?text=${message}`, "_blank");
 
       toast.success("Order placed successfully! 🎉 Admin notified.");
-      router.push("/dashboard?order=success");
+
+      // REDIRECT TO CONFIRMATION PAGE WITH ORDER ID
+      router.push(`/order-confirmation?orderId=${orderId}`);
     } catch (err: any) {
       console.error("Order error:", err);
       toast.error("Failed to place order. Try again.");
