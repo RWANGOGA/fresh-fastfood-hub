@@ -1,7 +1,7 @@
 // src/app/order-tracking/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/app/components/Navbar";
 import { db } from "@/lib/firebase";
@@ -9,7 +9,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-export default function OrderTracking() {
+function OrderTrackingContent() {
   const { user } = useAuth("user");
   const searchParams = useSearchParams();
   const highlight = searchParams.get("highlight");
@@ -112,34 +112,37 @@ export default function OrderTracking() {
       <main 
         className="min-h-screen pt-20 py-12 px-4 sm:px-6 relative"
         style={{
-          backgroundImage: `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%), url('https://img.freepik.com/premium-photo/assorted-food-dishes-takeout-containers-food-truck-counter-sunset-background_1317057-146.jpg')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
+          backgroundImage: `linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(244, 67, 54, 0.15) 100%),
+            url('https://static.vecteezy.com/system/resources/previews/002/078/255/non_2x/miniature-person-and-a-coffee-to-go-cup-coffee-delivery-concept-free-photo.jpg'),
+            url('https://img.freepik.com/premium-photo/assorted-food-dishes-takeout-containers-food-  and truck-counter-sunset-background_1317057-146.jpg')`,
+          backgroundSize: 'cover, cover, cover',
+          backgroundPosition: 'center, center, center',
           backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed',
+          backgroundBlendMode: 'overlay',
         }}
       >
-        {/* Subtle overlay for better text readability - now 15-25% instead of 90% */}
-        <div className="absolute inset-0 bg-linear-to-br from-black/20 to-black/10"></div>
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-white/85 backdrop-blur-[2px]"></div>
         
         <div className="max-w-4xl mx-auto relative z-10">
           {/* Header with Appreciation Message */}
           <div className="text-center mb-8 md:mb-12">
             <div className="text-5xl md:text-6xl mb-4 animate-bounce">❤️</div>
-            <h1 className="text-3xl md:text-5xl font-bold bg-linear-to-r from-white to-yellow-100 bg-clip-text text-transparent mb-4 drop-shadow-lg">
+            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-brand-red to-brand-green bg-clip-text text-transparent mb-4">
               Thank You for Your Trust!
             </h1>
-            <p className="text-lg md:text-xl text-white mb-3 max-w-2xl mx-auto leading-relaxed drop-shadow-md font-semibold">
+            <p className="text-lg md:text-xl text-gray-700 mb-3 max-w-2xl mx-auto leading-relaxed">
               We truly appreciate your continued support and loyalty. Every order you place helps us grow and serve you better with fresh, delicious food! 🙏✨
             </p>
             <div className="flex flex-wrap justify-center gap-3 mt-6">
-              <span className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full font-semibold text-sm shadow-lg">
+              <span className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full font-semibold text-sm">
                 🎯 Quality Guaranteed
               </span>
-              <span className="px-4 py-2 bg-green-100 text-green-800 rounded-full font-semibold text-sm shadow-lg">
+              <span className="px-4 py-2 bg-green-100 text-green-800 rounded-full font-semibold text-sm">
                 ⚡ Fast Delivery
               </span>
-              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold text-sm shadow-lg">
+              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold text-sm">
                 💝 Best Value
               </span>
             </div>
@@ -147,15 +150,15 @@ export default function OrderTracking() {
 
           {/* Grand Total Card */}
           {allOrders.length > 0 && (
-            <div className="bg-linear-to-r from-brand-red to-orange-500 rounded-2xl shadow-2xl p-6 md:p-10 mb-12 text-white transform hover:scale-105 transition-transform border-4 border-yellow-300">
+            <div className="bg-gradient-to-r from-brand-red to-orange-500 rounded-2xl shadow-2xl p-6 md:p-10 mb-12 text-white transform hover:scale-105 transition-transform">
               <div className="text-center">
-                <p className="text-lg md:text-xl opacity-95 mb-3 flex items-center justify-center gap-2 font-bold drop-shadow-lg">
+                <p className="text-lg md:text-xl opacity-90 mb-3 flex items-center justify-center gap-2">
                   <span>💰</span> Your Total Investment in Amazing Food
                 </p>
-                <h2 className="text-5xl md:text-7xl font-bold mb-4 drop-shadow-lg">
+                <h2 className="text-4xl md:text-6xl font-bold mb-4">
                   UGX {grandTotal.toLocaleString()}
                 </h2>
-                <p className="text-sm md:text-base opacity-95 max-w-2xl mx-auto font-semibold drop-shadow-md">
+                <p className="text-sm md:text-base opacity-90 max-w-2xl mx-auto">
                   {allOrders.length} delicious order{allOrders.length !== 1 ? 's' : ''} • Supporting local food excellence
                 </p>
               </div>
@@ -164,7 +167,7 @@ export default function OrderTracking() {
 
           {/* Highlighted Order (if coming from order-confirmation) */}
           {highlightedOrder && (
-            <div className="bg-linear-to-r from-blue-500 to-blue-600 rounded-2xl shadow-2xl p-6 md:p-8 mb-12 text-white">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-2xl p-6 md:p-8 mb-12 text-white">
               <h2 className="text-2xl md:text-3xl font-bold mb-6 flex items-center gap-2">
                 ⭐ Currently Viewing Order
               </h2>
@@ -252,8 +255,8 @@ export default function OrderTracking() {
           )}
 
           {/* All Orders Section */}
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 border-2 border-gray-200">
-            <h2 className="text-2xl md:text-3xl font-bold mb-8 text-gray-800">
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-8">
               {allOrders.length === 0 ? "No Orders Yet" : `All Your Orders (${allOrders.length})`}
             </h2>
 
@@ -360,11 +363,11 @@ export default function OrderTracking() {
 
           {/* Action Buttons */}
           <div className="text-center mt-12 space-y-4">
-            <div className="bg-linear-to-r from-white/95 to-blue-50/95 rounded-2xl p-6 md:p-8 mb-8 border-4 border-brand-green backdrop-blur-md shadow-2xl">
-              <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3 drop-shadow-sm">
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-6 md:p-8 mb-8 border-2 border-green-200">
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
                 🌟 Your Support Means Everything
               </h3>
-              <p className="text-base md:text-lg text-gray-700 max-w-2xl mx-auto leading-relaxed font-semibold">
+              <p className="text-base md:text-lg text-gray-700 max-w-2xl mx-auto leading-relaxed">
                 Every meal you order, every choice you make with us - it fuels our passion to deliver excellence. We're committed to bringing you the freshest food and fastest service. Thank you for believing in us! 💪🍴
               </p>
             </div>
@@ -387,5 +390,20 @@ export default function OrderTracking() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function OrderTracking() {
+  return (
+    <Suspense fallback={
+      <>
+        <Navbar />
+        <div className="min-h-screen pt-20 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div>
+        </div>
+      </>
+    }>
+      <OrderTrackingContent />
+    </Suspense>
   );
 }

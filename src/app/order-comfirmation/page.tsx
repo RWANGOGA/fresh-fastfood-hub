@@ -1,7 +1,7 @@
 // src/app/order-confirmation/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Navbar from "@/app/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
@@ -9,7 +9,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-export default function OrderConfirmation() {
+function OrderConfirmationContent() {
   const { user } = useAuth("user");
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
@@ -259,5 +259,20 @@ export default function OrderConfirmation() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function OrderConfirmation() {
+  return (
+    <Suspense fallback={
+      <>
+        <Navbar />
+        <div className="min-h-screen pt-20 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div>
+        </div>
+      </>
+    }>
+      <OrderConfirmationContent />
+    </Suspense>
   );
 }
