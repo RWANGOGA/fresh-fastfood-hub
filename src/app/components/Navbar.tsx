@@ -9,6 +9,7 @@ import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
+
 function CartBadge({ count }: { count: number }) {
   const [mounted, setMounted] = useState(false);
 
@@ -28,16 +29,14 @@ function CartBadge({ count }: { count: number }) {
 export default function Navbar() {
   const totalItems = useCartStore((state) => state.totalItems());
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<any>(null); // { uid, email, displayName, role? }
+  const [user, setUser] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const router = useRouter();
 
-  // Listen to Firebase auth state in real-time
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Optional: Fetch role from Firestore if you have it
-        const role = "user"; // Replace with real fetch if needed
+        const role = "user"; // Replace with real role fetch if you have it
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
@@ -72,6 +71,7 @@ export default function Navbar() {
     { name: "Cart", href: "/cart" },
     { name: "Dashboard", href: "/dashboard" },
     { name: "Locations", href: "/locations" },
+    { name: "Affiliate Program", href: "/affiliate" }, // ← NEW LINK ADDED HERE
   ];
 
   return (
