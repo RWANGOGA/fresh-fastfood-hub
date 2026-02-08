@@ -9,7 +9,6 @@ import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
-
 function CartBadge({ count }: { count: number }) {
   const [mounted, setMounted] = useState(false);
 
