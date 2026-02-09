@@ -25,8 +25,15 @@ const products = [
 export default function AffiliateProgram() {
   const [earning, setEarning] = useState("+6%");
   const [userEarned, setUserEarned] = useState("€450.64");
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const earningOptions = ["+6%", "+7%", "+5%", "+8%"];
   const userEarnedOptions = ["€450.64", "€523.18", "€678.92", "€715.64", "€392.50"];
+
+  // Get rotation angle based on open FAQ
+  const getRotation = (index: number) => {
+    const rotations = [0, 15, -15, 30, -30, 45, -45];
+    return openFaqIndex === index ? (rotations[index % rotations.length] || 0) : 0;
+  };
 
   // Animate earnings every 2 seconds
   useEffect(() => {
@@ -220,8 +227,8 @@ export default function AffiliateProgram() {
           backgroundRepeat: 'no-repeat',
         }}
       >
-        {/* White overlay for better text visibility */}
-        <div className="absolute inset-0 bg-white/90"></div>
+        {/* Very light overlay for maximum background visibility */}
+        <div className="absolute inset-0 bg-white/20"></div>
         
         <div className="max-w-7xl mx-auto relative z-10">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-12 text-blue-700">
@@ -319,7 +326,10 @@ export default function AffiliateProgram() {
               <img
                 src="https://globalfoodhub.com/cdn/shop/files/Loyalty_Footer_OP_1060x@2x.jpg?v=1738758683"
                 alt="Family Shopping"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-500"
+                style={{
+                  transform: openFaqIndex !== null ? `rotate(${getRotation(openFaqIndex)}deg)` : 'rotate(0deg)'
+                }}
               />
             </div>
 
@@ -328,7 +338,7 @@ export default function AffiliateProgram() {
               
               {[
                 {
-                  question: "WHAT IS GFH FAMILY REWARDS PROGRAM",
+                  question: "WHAT IS FFFH FAMILY REWARDS PROGRAM",
                   answer: "FFFH Family Rewards Program is our loyalty program that lets you earn points on every purchase. These points can be redeemed for discounts, free items, and exclusive offers. Join today and start saving on your favorite foods!"
                 },
                 {
@@ -358,13 +368,14 @@ export default function AffiliateProgram() {
               ].map((faq, index) => (
                 <details 
                   key={index}
-                  className="group bg-white border-2 border-gray-300 rounded-full hover:border-gray-400 transition-all"
+                  className="group bg-white border-2 border-gray-200 rounded-2xl hover:border-gray-300 transition-all overflow-hidden"
+                  onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
                 >
-                  <summary className="flex items-center justify-between px-6 py-4 cursor-pointer font-bold text-sm md:text-base text-gray-900">
-                    <span>{faq.question}</span>
-                    <span className="text-2xl group-open:rotate-45 transition-transform">+</span>
+                  <summary className="flex items-center justify-between px-6 py-5 cursor-pointer font-bold text-sm md:text-base text-gray-900 list-none">
+                    <span className="flex-1 pr-4">{faq.question}</span>
+                    <span className="text-2xl group-open:rotate-45 transition-transform duration-300 flex-shrink-0">+</span>
                   </summary>
-                  <div className="px-6 pb-4 text-sm md:text-base text-gray-700 leading-relaxed">
+                  <div className="px-6 pb-6 pt-2 text-sm md:text-base text-gray-700 leading-relaxed">
                     {faq.answer}
                   </div>
                 </details>

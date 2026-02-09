@@ -60,8 +60,8 @@ export default function Home() {
             backgroundRepeat: 'no-repeat',
           }}
         >
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/50"></div>
+          {/* Dark overlay - lighter for better image visibility */}
+          <div className="absolute inset-0 bg-black/40"></div>
           
           <div className="relative z-10 text-center text-white max-w-4xl">
             <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6">
@@ -464,8 +464,8 @@ export default function Home() {
             backgroundRepeat: 'no-repeat',
           }}
         >
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/70"></div>
+          {/* Dark overlay - lighter for better image visibility */}
+          <div className="absolute inset-0 bg-black/40"></div>
           
           <div className="relative z-10 text-center text-white max-w-4xl">
             <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8">
@@ -497,8 +497,8 @@ export default function Home() {
             backgroundRepeat: 'no-repeat',
           }}
         >
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/50"></div>
+          {/* Dark overlay - lighter for better image visibility */}
+          <div className="absolute inset-0 bg-black/30"></div>
           
           <div className="relative z-10 text-center text-white max-w-5xl">
             <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8">
@@ -596,8 +596,8 @@ export default function Home() {
             backgroundRepeat: 'no-repeat',
           }}
         >
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/60"></div>
+          {/* Bright overlay for better image visibility */}
+          <div className="absolute inset-0 bg-black/20"></div>
           
           <div className="relative z-10 text-center text-white max-w-5xl">
             {/* Chef icon */}
@@ -621,6 +621,127 @@ export default function Home() {
             >
               REQUEST A QUOTE
             </Link>
+          </div>
+        </section>
+
+        {/* ================= OUR SERVICES SECTION ================= */}
+        <section className="py-16 md:py-24 px-4 md:px-8">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-center mb-12 text-white drop-shadow-lg">
+              Our Services
+            </h2>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              
+              {/* Service 1 - Catering */}
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl group h-80">
+                <img
+                  src="https://images.pexels.com/photos/2641886/pexels-photo-2641886.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  alt="Catering"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                >
+                  <source src="https://videos.pexels.com/video-files/2669443/2669443-hd_1280_720_30fps.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 px-4">
+                  <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <span className="text-3xl">🍽️</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white text-center drop-shadow-lg">
+                    Catering
+                  </h3>
+                </div>
+              </div>
+
+              {/* Service 2 - Food Delivery */}
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl group h-80">
+                <img
+                  src="https://images.pexels.com/photos/2983101/pexels-photo-2983101.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  alt="Food Delivery"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                >
+                  <source src="https://videos.pexels.com/video-files/3205916/3205916-hd_1280_720_30fps.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 px-4">
+                  <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <span className="text-3xl">🚗</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white text-center drop-shadow-lg">
+                    Food Delivery
+                  </h3>
+                </div>
+              </div>
+
+              {/* Service 3 - Online Booking */}
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl group h-80">
+                <img
+                  src="https://images.pexels.com/photos/5077047/pexels-photo-5077047.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  alt="Online Booking"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                >
+                  <source src="https://videos.pexels.com/video-files/853843/853843-hd_1280_720_30fps.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 px-4">
+                  <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <span className="text-3xl">💻</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white text-center drop-shadow-lg">
+                    Online Booking
+                  </h3>
+                </div>
+              </div>
+
+              {/* Service 4 - Hotel Services */}
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl group h-80">
+                <img
+                  src="https://images.pexels.com/photos/189349/pexels-photo-189349.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  alt="Hotel Services"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                >
+                  <source src="https://videos.pexels.com/video-files/2406289/2406289-hd_1280_720_30fps.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 px-4">
+                  <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <span className="text-3xl">🏨</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white text-center drop-shadow-lg">
+                    Hotel Services
+                  </h3>
+                </div>
+              </div>
+
+            </div>
           </div>
         </section>
 
