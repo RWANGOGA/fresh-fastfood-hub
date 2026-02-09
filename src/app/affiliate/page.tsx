@@ -175,6 +175,207 @@ export default function AffiliateProgram() {
         </div>
       </section>
 
+      {/* ================= GFH FAMILY REWARDS PROGRAM SECTION ================= */}
+      <section className="relative py-8 md:py-12 px-2 sm:px-4 md:px-8">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-6 md:gap-8">
+          
+          {/* Left side - Image */}
+          <div className="relative w-full rounded-[30px] sm:rounded-[40px] md:rounded-[50px] overflow-hidden shadow-2xl order-1">
+            <img
+              src="https://globalfoodhub.com/cdn/shop/files/Loyalty_Header-_OP_1730x@2x.jpg?v=1738754022"
+              alt="GFH Family Rewards"
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Rewards sidebar on the image */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-pink-600 text-white py-6 sm:py-8 px-2 sm:px-3 rounded-r-2xl shadow-lg">
+              <p className="text-xs sm:text-sm font-bold tracking-wider transform rotate-180" style={{ writingMode: 'vertical-rl' }}>
+                Rewards
+              </p>
+            </div>
+          </div>
+
+          {/* Right side - Blue card with text */}
+          <div className="relative bg-gradient-to-br from-blue-700 to-blue-800 rounded-[30px] sm:rounded-[40px] md:rounded-[50px] p-8 sm:p-12 md:p-16 flex items-center justify-center shadow-2xl order-2">
+            <div className="text-center text-white">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-4">
+                FFFH FAMILY
+              </h2>
+              <h3 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight">
+                Rewards<br />Program
+              </h3>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ================= EARN POINTS SECTION ================= */}
+      <section 
+        className="relative py-16 md:py-24 px-4 md:px-8"
+        style={{
+          backgroundImage: `url('https://antdisplay.com/pub/media/catalog/product/cache/0b15dd40dbb5ba9d1c9c7c922d7047d5/f/o/food_court_1.jpg')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        {/* White overlay for better text visibility */}
+        <div className="absolute inset-0 bg-white/90"></div>
+        
+        <div className="max-w-7xl mx-auto relative z-10">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-12 text-blue-700">
+            Earn Points
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            
+            {/* Card 1 - Join Program */}
+            <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 md:p-8 flex flex-col items-center text-center shadow-lg hover:shadow-xl transition-shadow">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-blue-200 rounded-full flex items-center justify-center mb-6">
+                <span className="text-4xl md:text-5xl">💰</span>
+              </div>
+              <h3 className="text-lg md:text-xl font-bold mb-3 text-gray-900">
+                Join Program and Start Savings
+              </h3>
+              <p className="text-sm md:text-base text-gray-700 mb-6">
+                +50 Rewards
+              </p>
+              <button className="w-full bg-blue-700 text-white font-bold py-3 px-6 rounded-full hover:bg-blue-800 transition">
+                Go
+              </button>
+            </div>
+
+            {/* Card 2 - Place an Order */}
+            <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 md:p-8 flex flex-col items-center text-center shadow-lg hover:shadow-xl transition-shadow">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-blue-200 rounded-full flex items-center justify-center mb-6">
+                <span className="text-4xl md:text-5xl">🎁</span>
+              </div>
+              <h3 className="text-lg md:text-xl font-bold mb-3 text-gray-900">
+                Place an Order
+              </h3>
+              <p className="text-sm md:text-base text-gray-700">
+                +1 Reward for every €1 spent
+              </p>
+            </div>
+
+            {/* Card 3 - Celebrate a Birthday */}
+            <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 md:p-8 flex flex-col items-center text-center shadow-lg hover:shadow-xl transition-shadow">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-blue-200 rounded-full flex items-center justify-center mb-6">
+                <span className="text-4xl md:text-5xl">🎂</span>
+              </div>
+              <h3 className="text-lg md:text-xl font-bold mb-3 text-gray-900">
+                Celebrate a Birthday
+              </h3>
+              <p className="text-sm md:text-base text-gray-700">
+                +100 Rewards on your birthday
+              </p>
+            </div>
+
+            {/* Card 4 - Refer a Friend */}
+            <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 md:p-8 flex flex-col items-center text-center shadow-lg hover:shadow-xl transition-shadow">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-blue-200 rounded-full flex items-center justify-center mb-6">
+                <span className="text-4xl md:text-5xl">👥</span>
+              </div>
+              <h3 className="text-lg md:text-xl font-bold mb-3 text-gray-900">
+                Refer a Friend
+              </h3>
+              <p className="text-sm md:text-base text-gray-700">
+                +100 Rewards
+              </p>
+            </div>
+
+          </div>
+
+          {/* Second row - Write a Review */}
+          <div className="max-w-md">
+            <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 md:p-8 flex flex-col items-center text-center shadow-lg hover:shadow-xl transition-shadow">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-blue-200 rounded-full flex items-center justify-center mb-6">
+                <span className="text-4xl md:text-5xl">⭐</span>
+              </div>
+              <h3 className="text-lg md:text-xl font-bold mb-3 text-gray-900">
+                Write a Review
+              </h3>
+              <p className="text-sm md:text-base text-gray-700">
+                +100 Rewards
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ================= REWARDS FAQs SECTION ================= */}
+      <section className="py-16 md:py-24 px-4 md:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-12 text-center text-gray-900">
+            Rewards FAQs
+          </h2>
+
+          <div className="grid lg:grid-cols-2 gap-8 items-start">
+            
+            {/* Left side - Image */}
+            <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl">
+              <img
+                src="https://globalfoodhub.com/cdn/shop/files/Loyalty_Footer_OP_1060x@2x.jpg?v=1738758683"
+                alt="Family Shopping"
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            {/* Right side - FAQ Accordion */}
+            <div className="space-y-4">
+              
+              {[
+                {
+                  question: "WHAT IS GFH FAMILY REWARDS PROGRAM",
+                  answer: "FFFH Family Rewards Program is our loyalty program that lets you earn points on every purchase. These points can be redeemed for discounts, free items, and exclusive offers. Join today and start saving on your favorite foods!"
+                },
+                {
+                  question: "HOW DO I EARN POINTS?",
+                  answer: "You earn points in multiple ways: +1 point for every €1 spent, +50 points when you join the program, +100 points on your birthday, +100 points for writing a review, and +100 points for referring a friend who makes a purchase."
+                },
+                {
+                  question: "DO MY POINTS EXPIRE?",
+                  answer: "Points are valid for 12 months from the date they are earned. To keep your points active, make at least one purchase every 12 months. Any points not used within this period will expire."
+                },
+                {
+                  question: "DO MY PREVIOUS PURCHASES COUNT?",
+                  answer: "Points are only earned on purchases made after you join the GFH Family Rewards Program. Previous purchases made before enrollment are not eligible for points, but all future purchases will earn you rewards!"
+                },
+                {
+                  question: "HOW DO I REDEEM POINTS?",
+                  answer: "Redeeming points is easy! Simply log in to your account, browse available rewards, and select what you'd like to redeem. Your discount or free item will be applied automatically at checkout. You can also redeem points in-store by showing your rewards account."
+                },
+                {
+                  question: "CAN I COMBINE MY POINTS WITH OTHER OFFERS?",
+                  answer: "Yes! In most cases, you can combine your reward points with other promotional offers and discounts. However, some exclusive promotions may have restrictions. Check the terms of each offer for specific details."
+                },
+                {
+                  question: "WHAT IF I NEED ASSISTANCE REDEEMING MY POINTS?",
+                  answer: "Our support team is here to help! Contact us at affiliates@fresh-fastfoodhub.com or use the chat feature on our website. We'll be happy to assist you with redeeming your points or answer any questions about your rewards account."
+                }
+              ].map((faq, index) => (
+                <details 
+                  key={index}
+                  className="group bg-white border-2 border-gray-300 rounded-full hover:border-gray-400 transition-all"
+                >
+                  <summary className="flex items-center justify-between px-6 py-4 cursor-pointer font-bold text-sm md:text-base text-gray-900">
+                    <span>{faq.question}</span>
+                    <span className="text-2xl group-open:rotate-45 transition-transform">+</span>
+                  </summary>
+                  <div className="px-6 pb-4 text-sm md:text-base text-gray-700 leading-relaxed">
+                    {faq.answer}
+                  </div>
+                </details>
+              ))}
+
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       {/* ================= PURPOSE & HOW IT WORKS SECTION ================= */}
       <section className="py-16 md:py-24 px-4 md:px-8 bg-gradient-to-b from-red-700 via-red-800 to-red-900">
         <div className="max-w-6xl mx-auto text-center">
