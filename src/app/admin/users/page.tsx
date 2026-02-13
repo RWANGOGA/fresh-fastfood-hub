@@ -157,6 +157,12 @@ export default function AdminUsers() {
                         </span>
                       </td>
                       <td className="px-6 py-5 text-center space-x-4">
+                        <Link
+                          href={u.role === "admin" ? "/admin/dashboard" : `/dashboard?viewUser=${u.id}`}
+                          className="text-green-600 hover:text-green-800 font-medium"
+                        >
+                          View Dashboard
+                        </Link>
                         <button
                           onClick={() => changeRole(u.id, u.role === "admin" ? "user" : "admin")}
                           className="text-blue-600 hover:text-blue-800 font-medium"

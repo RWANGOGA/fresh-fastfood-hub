@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { useCartStore } from "@/app/store/cartStore";
 import { useSyncedCart } from "@/app/store/cartStore";
+import { useSearchParams } from "next/navigation";
 
 // Types
 interface Order {
@@ -48,8 +49,12 @@ interface LikedItem {
 }
 
 export default function UserDashboard() {
-  const { user, role, loading: authLoading } = useAuth("user");
+  const { user, role, loading: authLoading } = useAuth();
   const { cart, totalPrice, removeFromCart, clearCart } = useCartStore();
+  const searchParams = useSearchParams();
+  const viewUserId = searchParams.get('viewUser');
+  const isAdminView = role === 'admin' && viewUserId && viewUserId !== user?.uid;
+  const targetUserId = isAdminView ? viewUserId : user?.uid;
 
   useSyncedCart();
 
@@ -79,12 +84,16 @@ export default function UserDashboard() {
 
   // Fetch profile
   useEffect(() => {
-    if (!user?.uid) return;
+    window.scrollTo(0, 0); // Scroll to top on load
+  }, []);
+
+  useEffect(() => {
+    if (!targetUserId) return;
 
     const fetchProfile = async () => {
       setProfileLoading(true);
       try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userDoc = await getDoc(doc(db, "users", targetUserId));
         if (userDoc.exists()) {
           const data = userDoc.data();
           const profileData = {
@@ -136,21 +145,21 @@ export default function UserDashboard() {
     };
 
     fetchProfile();
-  }, [user?.uid]);
+  }, [targetUserId]);
 
   // Fetch orders
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!targetUserId) return;
 
     const fetchOrders = async () => {
       try {
-        const q = query(collection(db, "orders"), where("userId", "==", user.uid));
+        const q = query(collection(db, "orders"), where("userId", "==", targetUserId));
         const querySnapshot = await getDocs(q);
         const ordersList: Order[] = querySnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
-            userId: data.userId || user.uid,
+            userId: data.userId || targetUserId,
             name: data.name || "",
             phone: data.phone || "",
             address: data.address || "",
@@ -171,7 +180,7 @@ export default function UserDashboard() {
     };
 
     fetchOrders();
-  }, [user?.uid]);
+  }, [targetUserId]);
 
   const handleCancelOrder = async (orderId: string) => {
     if (!confirm("Are you sure you want to cancel this order?")) return;
@@ -196,11 +205,11 @@ export default function UserDashboard() {
 
   // Fetch liked items
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!targetUserId) return;
 
     const fetchLiked = async () => {
       try {
-        const likedSnapshot = await getDocs(collection(db, "users", user.uid, "likedItems"));
+        const likedSnapshot = await getDocs(collection(db, "users", targetUserId, "likedItems"));
         const likedList: LikedItem[] = likedSnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
@@ -219,7 +228,7 @@ export default function UserDashboard() {
     };
 
     fetchLiked();
-  }, [user?.uid]);
+  }, [targetUserId]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0] || !user) return;
@@ -319,11 +328,26 @@ export default function UserDashboard() {
     );
   }
 
-  if (role !== "user") return null;
+  if (!user || (!isAdminView && role !== "user")) return null;
 
   return (
     <>
       <Navbar />
+
+      {isAdminView && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <span className="text-xl">👁️</span>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm">
+                <strong>Admin View:</strong> You are viewing this user's dashboard in read-only mode. No changes can be made.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="min-h-screen pt-20 bg-gradient-to-br from-orange-100 via-red-100 to-yellow-100 flex relative">
         {/* Mobile Sidebar Toggle */}
@@ -441,7 +465,7 @@ export default function UserDashboard() {
           <div className="bg-white p-8 rounded-2xl shadow-xl mb-12">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">My Profile</h2>
-              {!isEditingProfile && (
+              {!isEditingProfile && !isAdminView && (
                 <button
                   onClick={() => setIsEditingProfile(true)}
                   className="px-6 py-2 bg-brand-yellow text-black font-semibold rounded-xl hover:bg-yellow-300 transition"
@@ -800,7 +824,7 @@ export default function UserDashboard() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-4 mt-4">
-                      {order.status === "pending" && (
+                      {order.status === "pending" && !isAdminView && (
                         <button
                           onClick={() => handleCancelOrder(order.id)}
                           className="px-5 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition text-sm font-medium"

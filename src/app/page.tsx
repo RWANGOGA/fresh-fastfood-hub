@@ -5,6 +5,7 @@ import Navbar from "@/app/components/Navbar";
 import HeroCarousel from "@/app/components/HeroCarousel";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 
 const testimonials = [
   {
@@ -98,32 +99,28 @@ export default function Home() {
         {/* ================= VISION SECTION ================= */}
         <section className="py-16 md:py-24 px-4 md:px-8 bg-gray-100">
           <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-12">
-            
+
             {/* Vision */}
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-800">Vision</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-blue-600">Vision</h2>
               <p className="text-gray-700 leading-relaxed">
-                We cultivate with care and professionalism our greatest passion: to make your meal unique. Over the years we have responded to our customers with the best solutions of Catering and Quality Service, ensuring an impeccable service with its focus on competence and helpfulness. From the accuracy of the menu to the choice of the location, we guide you step by step with enthusiasm.
+                To revolutionize <span className="text-orange-500 font-semibold">online food ordering</span> and <span className="text-red-500 font-semibold">delivery</span> in Uganda, making <span className="text-green-600 font-semibold">fresh</span>, delicious meals accessible to everyone. We envision a world where customers can enjoy <span className="text-yellow-600 font-semibold">restaurant-quality catering</span>, <span className="text-purple-600 font-semibold">hotel dining</span>, and <span className="text-pink-500 font-semibold">fast food delivery</span> right to their doorstep with just a few clicks, combining convenience with exceptional service.
               </p>
             </div>
 
             {/* Our Philosophy */}
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-600 uppercase tracking-wider text-sm">
-                Our Philosophy
-              </h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-green-600">Our Philosophy</h2>
               <p className="text-gray-700 leading-relaxed">
-                Today, thanks to our gained experience, we are a landmark for businesses and individuals. We rely only on a team of professionals and highly qualified chefs and waiters, true flavor artists able to compose the menu with passion, excellence and care, playing with creativity the notes of your preferences to welcome you in a warm and hospitable atmosphere.
+                <span className="text-red-500 font-semibold">Quality</span> meets convenience. Our team of professional <span className="text-orange-500 font-semibold">chefs</span>, skilled <span className="text-blue-500 font-semibold">caterers</span>, and dedicated <span className="text-green-600 font-semibold">delivery personnel</span> work together to provide seamless <span className="text-purple-600 font-semibold">online ordering</span> experiences. From <span className="text-yellow-600 font-semibold">corporate catering</span> to <span className="text-pink-500 font-semibold">hotel banquets</span>, <span className="text-indigo-500 font-semibold">restaurant takeout</span> to <span className="text-teal-500 font-semibold">home delivery</span>, we maintain the highest standards in <span className="text-red-500 font-semibold">food preparation</span>, packaging, and timely <span className="text-orange-500 font-semibold">delivery</span> across all our services.
               </p>
             </div>
 
             {/* We and Your Dreams */}
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-600 uppercase tracking-wider text-sm">
-                We and Your Dreams
-              </h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-purple-600">We & Your Dreams</h2>
               <p className="text-gray-700 leading-relaxed">
-                We want to see you happy and satisfied. For this reason, we seek excellence in every detail. For you we select only the freshest raw materials, the best ingredients, the finest cutlery and tablecloth sets to create scenographic presentations. And if you need advices, we are willing to help you with pleasure. For your company and for the most important ceremonies of your life.
+                Your satisfaction is our success. Whether you're ordering <span className="text-orange-500 font-semibold">delivery</span> for a family dinner, arranging <span className="text-blue-500 font-semibold">catering</span> for a corporate event, or planning a <span className="text-purple-600 font-semibold">hotel banquet</span>, we turn your culinary dreams into reality. With our user-friendly <span className="text-green-600 font-semibold">online platform</span>, real-time tracking, and commitment to excellence, we ensure every meal <span className="text-red-500 font-semibold">delivered</span> or <span className="text-yellow-600 font-semibold">catered</span> exceeds expectations and creates memorable experiences.
               </p>
             </div>
 
@@ -214,14 +211,14 @@ export default function Home() {
         >
           <div className="absolute inset-0 bg-black/40"></div>
           <div className="relative z-10 text-center text-white max-w-4xl">
-            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8">
-              We will be your trusted partner
+            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 text-white">
+              We will be your trusted <span className="text-orange-300">online</span> partner
             </h2>
-            <p className="text-xl md:text-2xl mb-4 leading-relaxed">
-              We will follow you on the most important occasions always with maximum availability.
+            <p className="text-xl md:text-2xl mb-4 leading-relaxed text-white">
+              From <span className="text-green-300 font-semibold">online ordering</span> to <span className="text-red-300 font-semibold">doorstep delivery</span>, we follow you on the most important occasions always with maximum availability.
             </p>
-            <p className="text-lg md:text-xl mb-10 leading-relaxed">
-              Your every request will be a creative stimulus for us, because your satisfaction is our main goal.
+            <p className="text-lg md:text-xl mb-10 leading-relaxed text-white">
+              Your every request for <span className="text-blue-300 font-semibold">catering</span>, <span className="text-purple-300 font-semibold">hotel services</span>, or <span className="text-yellow-300 font-semibold">restaurant delivery</span> will be a creative stimulus for us, because your satisfaction is our main goal.
             </p>
             
             <Link
@@ -264,10 +261,10 @@ export default function Home() {
         <section className="py-16 md:py-24 px-4 md:px-8 bg-white">
           <div className="max-w-5xl mx-auto text-center">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-gray-800">
-              The banqueting of Fresh Fast Food Hub
+              The <span className="text-red-500">banqueting</span> & <span className="text-orange-500">online delivery</span> of Fresh Fast Food Hub
             </h2>
             <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
-              To make your wishes come true, Fresh Fast Food Hub works with the utmost professionalism and passion. Our team of experts is able to create menus and settings suitable for any context and situation. We know with absolute certainty that we will be able to satisfy you by guaranteeing you an <strong>impeccable and unforgettable Banqueting Service</strong>.
+              To make your wishes come true, Fresh Fast Food Hub works with the utmost professionalism and passion. Our team of experts is able to create <span className="text-green-600 font-semibold">menus</span> and settings suitable for any context and situation. From <span className="text-blue-600 font-semibold">online ordering</span> to <span className="text-purple-600 font-semibold">hotel catering</span>, <span className="text-yellow-600 font-semibold">restaurant delivery</span> to <span className="text-pink-600 font-semibold">corporate events</span>, we know with absolute certainty that we will be able to satisfy you by guaranteeing you an <strong className="text-red-500">impeccable and unforgettable Banqueting Service</strong>.
             </p>
           </div>
         </section>
@@ -383,34 +380,34 @@ export default function Home() {
         <section className="py-16 md:py-24 px-4 md:px-8 bg-gray-100">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-center mb-16 text-gray-800">
-              Our Corporate Catering services
+              Our <span className="text-red-500">Corporate Catering</span> & <span className="text-orange-500">Online Delivery</span> Services
             </h2>
 
             <div className="grid md:grid-cols-3 gap-12">
               <div className="text-center">
-                <h3 className="text-2xl md:text-3xl font-bold mb-6 text-gray-800 uppercase tracking-wide">
-                  Weddings
+                <h3 className="text-2xl md:text-3xl font-bold mb-6 text-red-600 uppercase tracking-wide">
+                  Weddings & Events
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  To make your wedding unique, we entrust you with an excellent Wedding Planner. A professional at your disposal who with experience will accompany you until the day you say yes. Over the years we have fulfilled the dream of many married couples, creating state-of-the-art receptions, finely woven according to the taste and style of Love.
+                  To make your <span className="text-pink-500 font-semibold">wedding</span> unique, we offer <span className="text-blue-500 font-semibold">online booking</span> for catering services. A professional planner at your disposal who with experience will accompany you until the day you say yes. Over the years we have fulfilled the dream of many couples, creating state-of-the-art receptions with <span className="text-green-500 font-semibold">fresh food delivery</span> to your venue.
                 </p>
               </div>
 
               <div className="text-center">
-                <h3 className="text-2xl md:text-3xl font-bold mb-6 text-gray-800 uppercase tracking-wide">
+                <h3 className="text-2xl md:text-3xl font-bold mb-6 text-orange-600 uppercase tracking-wide">
                   Food Delivery
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Experience the convenience of having Fresh Fast Food Hub delivered right to your doorstep. We bring the same quality, freshness, and professionalism to every delivery. Whether it's a corporate lunch, family gathering, or special event, our delivery service ensures your food arrives hot, fresh, and on time - every time.
+                  Experience the convenience of having Fresh Fast Food Hub <span className="text-orange-500 font-semibold">delivered</span> right to your doorstep. We bring the same quality, freshness, and professionalism to every <span className="text-red-500 font-semibold">delivery</span>. Whether it's a corporate lunch, family gathering, or special event, our <span className="text-blue-500 font-semibold">online ordering</span> ensures your food arrives hot, fresh, and on time - every time.
                 </p>
               </div>
 
               <div className="text-center">
-                <h3 className="text-2xl md:text-3xl font-bold mb-6 text-gray-800 uppercase tracking-wide">
+                <h3 className="text-2xl md:text-3xl font-bold mb-6 text-blue-600 uppercase tracking-wide">
                   Online Booking
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Your reception will be the protagonist of a fairy tale written with the colors of the party. We will support you with enthusiasm for any type of Celebration and Private Event. Imagine toasting with your guests and spending a special day with them in a special setting. With us your dream finally comes true!
+                  Your reception will be the protagonist of a fairy tale written with the colors of the party. We support you with enthusiasm for any type of <span className="text-purple-500 font-semibold">Celebration</span> and <span className="text-green-500 font-semibold">Private Event</span>. Imagine toasting with your guests and spending a special day with them in a special setting. With our <span className="text-orange-500 font-semibold">online platform</span>, your dream finally comes true!
                 </p>
               </div>
             </div>
@@ -418,34 +415,34 @@ export default function Home() {
         </section>
 
         {/* ================= WHAT WE DO SECTION ================= */}
-        <section className="py-20 md:py-28 px-4 md:px-8 bg-white">
+        <section className="py-20 md:py-28 px-4 md:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-center mb-4 text-gray-900">
-              What We Do
+              What We Do: <span className="text-orange-500">Online Ordering</span> & <span className="text-red-500">Delivery Excellence</span>
             </h2>
             <p className="text-xl text-gray-600 text-center mb-16 max-w-3xl mx-auto">
-              Fresh Fast Food Hub offers a wide range of catering and food services to meet all your needs
+              Fresh Fast Food Hub offers a wide range of <span className="text-blue-500 font-semibold">catering</span>, <span className="text-green-500 font-semibold">hotel services</span>, and <span className="text-purple-500 font-semibold">online food delivery</span> to meet all your needs
             </p>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {services.map((service, index) => (
                 <div
                   key={index}
-                  className={`p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 text-center relative overflow-hidden
-                    ${index % 7 === 0 ? 'bg-gradient-to-br from-brand-red to-red-600 rounded-tl-3xl rounded-br-3xl' : ''}
-                    ${index % 7 === 1 ? 'bg-gradient-to-br from-brand-yellow to-yellow-500 rounded-tr-3xl rounded-bl-3xl' : ''}
-                    ${index % 7 === 2 ? 'bg-gradient-to-br from-green-500 to-green-700 rounded-full' : ''}
-                    ${index % 7 === 3 ? 'bg-gradient-to-br from-blue-500 to-blue-700 rounded-tr-3xl rounded-bl-3xl' : ''}
-                    ${index % 7 === 4 ? 'bg-gradient-to-br from-purple-500 to-purple-700 rounded-tl-3xl rounded-br-3xl' : ''}
-                    ${index % 7 === 5 ? 'bg-gradient-to-br from-orange-500 to-orange-700 rounded-full' : ''}
-                    ${index % 7 === 6 ? 'bg-gradient-to-br from-pink-500 to-pink-700 rounded-tr-3xl rounded-bl-3xl' : ''}
-                  `}
+                  className="p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 text-center relative overflow-hidden bg-white rounded-3xl"
                 >
                   <div className="relative z-10">
-                    <h3 className="text-xl font-bold mb-4 text-white">
+                    <h3 className={`text-xl font-bold mb-4 ${
+                      index === 0 ? 'text-red-600' :
+                      index === 1 ? 'text-orange-600' :
+                      index === 2 ? 'text-yellow-600' :
+                      index === 3 ? 'text-green-600' :
+                      index === 4 ? 'text-blue-600' :
+                      index === 5 ? 'text-purple-600' :
+                      'text-pink-600'
+                    }`}>
                       {service.title}
                     </h3>
-                    <p className="text-white/90 leading-relaxed text-sm">
+                    <p className="text-gray-700 leading-relaxed text-sm">
                       {service.description}
                     </p>
                   </div>
@@ -478,7 +475,7 @@ export default function Home() {
             </h2>
             
             <p className="text-lg md:text-xl mb-10 leading-relaxed max-w-4xl mx-auto">
-              Fresh Fast Food Hub always maintains its objectives by offering an excellent Catering Service and a highly selected Staff, with excellent training behind them. Our Events are distinguished by the quality of the cuisine and the environments: in an exclusive context specially selected according to your preferences, your Guests will be able to taste the authentic flavors of the best cuisine, celebrating unforgettable moments together.
+              Fresh Fast Food Hub always maintains its objectives by offering an excellent <span className="text-red-300 font-semibold">Catering Service</span> and a highly selected Staff, with excellent training behind them. Our <span className="text-blue-300 font-semibold">online ordering</span> and <span className="text-orange-300 font-semibold">delivery</span> are distinguished by the quality of the cuisine and the environments: in an exclusive context specially selected according to your preferences, your Guests will be able to taste the authentic flavors of the best cuisine, celebrating unforgettable moments together.
             </p>
             
             <Link
@@ -494,7 +491,7 @@ export default function Home() {
         <section className="py-16 md:py-24 px-4 md:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-center mb-12 text-gray-900">
-              Our Services
+              Our <span className="text-orange-500">Online</span> Services: <span className="text-red-500">Catering</span> & <span className="text-green-500">Delivery</span>
             </h2>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">

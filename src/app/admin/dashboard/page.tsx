@@ -12,26 +12,10 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  query,
-  orderBy,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import toast from "react-hot-toast";
 import Link from "next/link";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Line, Pie } from "react-chartjs-2";
-
-// Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend);
 
 // Categories (same as menu page)
 const categories = [
@@ -62,11 +46,6 @@ interface User {
   createdAt?: string;
 }
 
-interface Order {
-  id: string;
-  createdAt?: any; // Firestore Timestamp
-}
-
 export default function AdminDashboard() {
   const { user, role, loading: authLoading } = useAuth("admin");
 
@@ -83,12 +62,8 @@ export default function AdminDashboard() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // ─── DASHBOARD STATE ─────────────────────────────────────────────
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [totalOrders, setTotalOrders] = useState(0);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
-  const [ordersByMonth, setOrdersByMonth] = useState<Record<string, number>>({});
 
   // ─── FETCH ALL DATA ──────────────────────────────────────────────
   useEffect(() => {
@@ -105,46 +80,6 @@ export default function AdminDashboard() {
         })) as Product[];
         setProducts(productsList);
 
-        // Category counts
-        const counts: Record<string, number> = {};
-        productsList.forEach((p) => {
-          const cat = p.category || "Uncategorized";
-          counts[cat] = (counts[cat] || 0) + 1;
-        });
-        setCategoryCounts(counts);
-
-        // Orders
-        const ordersSnap = await getDocs(
-          query(collection(db, "orders"), orderBy("createdAt", "desc"))
-        );
-        const ordersList = ordersSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Order[];
-        setTotalOrders(ordersList.length);
-
-        // Group orders by month
-        const now = new Date();
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const last6Months: Record<string, number> = {};
-
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
-          last6Months[key] = 0;
-        }
-
-        ordersList.forEach((order) => {
-          if (order.createdAt) {
-            const date = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
-            const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-            if (last6Months.hasOwnProperty(monthKey)) {
-              last6Months[monthKey]++;
-            }
-          }
-        });
-        setOrdersByMonth(last6Months);
-
         // Users
         const usersSnap = await getDocs(collection(db, "users"));
         const usersList = usersSnap.docs.map((doc) => ({
@@ -152,7 +87,6 @@ export default function AdminDashboard() {
           ...doc.data(),
         })) as User[];
         setUsers(usersList);
-        setTotalUsers(usersList.length);
       } catch (err: any) {
         console.error("Error fetching data:", err);
         toast.error("Failed to load dashboard data");
@@ -164,34 +98,6 @@ export default function AdminDashboard() {
     fetchAllData();
   }, [role]);
 
-  // ─── CHART DATA ──────────────────────────────────────────────────
-  const ordersChartData = {
-    labels: Object.keys(ordersByMonth),
-    datasets: [
-      {
-        label: "Orders per Month",
-        data: Object.values(ordersByMonth),
-        borderColor: "#FF6384",
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
-        tension: 0.4,
-        fill: true,
-      },
-    ],
-  };
-
-  const categoryChartData = {
-    labels: Object.keys(categoryCounts),
-    datasets: [
-      {
-        data: Object.values(categoryCounts),
-        backgroundColor: [
-          "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0",
-          "#9966FF", "#FF9F40", "#C9CBCF",
-        ],
-        hoverOffset: 20,
-      },
-    ],
-  };
 
   // ─── PRODUCT FUNCTIONS (exactly your original code) ──────────────
 
@@ -298,6 +204,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleRole = async (userId: string, currentRole: string) => {
+    const newRole = currentRole === "admin" ? "user" : "admin";
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, { role: newRole });
+      toast.success(`User role updated to ${newRole}`);
+      setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+    } catch (err: any) {
+      toast.error("Failed to update role: " + err.message);
+      console.error(err);
+    }
+  };
+
   if (authLoading || fetchLoading) {
     return (
       <>
@@ -391,7 +310,7 @@ export default function AdminDashboard() {
           {/* Mobile toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden fixed top-4 left-4 z-50 bg-purple-600 text-white p-3 rounded-full shadow-lg"
+            className="lg:hidden fixed top-24 left-4 z-50 bg-purple-600 text-white p-3 rounded-full shadow-lg"
           >
             {sidebarOpen ? "✕" : "☰"}
           </button>
@@ -415,79 +334,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Analytics cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition">
-                  <h3 className="text-lg font-semibold text-gray-800">Total Orders</h3>
-                  <p className="text-4xl font-bold text-red-600 mt-2">{totalOrders}</p>
-                </div>
-
-                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition">
-                  <h3 className="text-lg font-semibold text-gray-800">Total Users</h3>
-                  <p className="text-4xl font-bold text-green-600 mt-2">{totalUsers}</p>
-                </div>
-
-                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition">
-                  <h3 className="text-lg font-semibold text-gray-800">Menu Items</h3>
-                  <p className="text-4xl font-bold text-purple-600 mt-2">{products.length}</p>
-                </div>
-
-                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition">
-                  <h3 className="text-lg font-semibold text-gray-800">Top Category</h3>
-                  <p className="text-2xl font-bold text-orange-600 mt-2 truncate">
-                    {Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—"}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[1] || 0} items
-                  </p>
-                </div>
-              </div>
-
-              {/* Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-200">
-                  <h3 className="text-xl font-bold mb-4 text-gray-800">Orders Trend (Last 6 Months)</h3>
-                  <div className="h-80">
-                    {Object.keys(ordersByMonth).length > 0 ? (
-                      <Line
-                        data={ordersChartData}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: { legend: { position: "top" } },
-                          scales: {
-                            y: { beginAtZero: true, title: { display: true, text: "Number of Orders" } },
-                          },
-                        }}
-                      />
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-gray-500">
-                        No orders yet
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-200">
-                  <h3 className="text-xl font-bold mb-4 text-gray-800">Menu Items by Category</h3>
-                  <div className="h-80 flex items-center justify-center">
-                    {Object.keys(categoryCounts).length > 0 ? (
-                      <Pie
-                        data={categoryChartData}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: { position: "bottom" },
-                          },
-                        }}
-                      />
-                    ) : (
-                      <p className="text-gray-500">No products added yet</p>
-                    )}
-                  </div>
-                </div>
-              </div>
 
               {/* ─── PRODUCT MANAGEMENT (YOUR ORIGINAL CODE) ───────────── */}
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-6 lg:p-8 mb-12 border border-gray-200">
@@ -723,6 +569,12 @@ export default function AdminDashboard() {
                               {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button
+                                onClick={() => handleToggleRole(u.id, u.role || "user")}
+                                className="text-blue-600 hover:text-blue-900 mr-4"
+                              >
+                                Toggle Role
+                              </button>
                               <button
                                 onClick={() => handleDeleteUser(u.id)}
                                 className="text-red-600 hover:text-red-900"

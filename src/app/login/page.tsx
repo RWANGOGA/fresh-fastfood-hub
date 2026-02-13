@@ -2,8 +2,9 @@
 "use client";
 
 import { useState } from "react";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -20,8 +21,16 @@ export default function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // Fetch user role from Firestore
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser!.uid));
+      const userData = userDoc.data();
+      const role = userData?.role || "user";
       toast.success("Logged in successfully!");
-      router.push("/dashboard"); // Redirect to dashboard – hook handles role
+      if (role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error: any) {
       let errMsg = "Login failed";
       if (error.code === "auth/user-not-found") errMsg = "No account found";
