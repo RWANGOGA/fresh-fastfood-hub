@@ -1,7 +1,7 @@
 // src/app/dashboard/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/app/components/Navbar";
 import { auth, db, storage } from "@/lib/firebase";
@@ -324,15 +324,17 @@ export default function UserDashboard() {
             <p className="text-xl text-gray-700">Loading your dashboard...</p>
           </div>
         </div>
-      </>
+        </>
+      </Suspense>
     );
   }
 
   if (!user || (!isAdminView && role !== "user")) return null;
 
   return (
-    <>
-      <Navbar />
+    <Suspense fallback={<div>Loading...</div>}>
+      <>
+        <Navbar />
 
       {isAdminView && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
