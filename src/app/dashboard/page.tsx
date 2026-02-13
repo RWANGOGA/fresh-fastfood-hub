@@ -1,7 +1,7 @@
 // src/app/dashboard/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/app/components/Navbar";
 import { auth, db, storage } from "@/lib/firebase";
@@ -22,7 +22,6 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { useCartStore } from "@/app/store/cartStore";
 import { useSyncedCart } from "@/app/store/cartStore";
-import { useSearchParams } from "next/navigation";
 
 // Types
 interface Order {
@@ -51,10 +50,8 @@ interface LikedItem {
 export default function UserDashboard() {
   const { user, role, loading: authLoading } = useAuth();
   const { cart, totalPrice, removeFromCart, clearCart } = useCartStore();
-  const searchParams = useSearchParams();
-  const viewUserId = searchParams.get('viewUser');
-  const isAdminView = role === 'admin' && viewUserId && viewUserId !== user?.uid;
-  const targetUserId = isAdminView ? viewUserId : user?.uid;
+  const isAdminView = false;
+  const targetUserId = user?.uid;
 
   useSyncedCart();
 
@@ -324,17 +321,15 @@ export default function UserDashboard() {
             <p className="text-xl text-gray-700">Loading your dashboard...</p>
           </div>
         </div>
-        </>
-      </Suspense>
+      </>
     );
   }
 
   if (!user || (!isAdminView && role !== "user")) return null;
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <>
-        <Navbar />
+    <>
+      <Navbar />
 
       {isAdminView && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
